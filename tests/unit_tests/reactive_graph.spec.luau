@@ -1,5 +1,6 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
+local graph = require("../../src/reactive/graph")
 
 local WEAK_TABLE = { __mode = "kv" }
 
@@ -351,6 +352,118 @@ TEST(
 			num(1)
 
 			CHECK(count == 2)
+		end
+	end)
+)
+
+TEST(
+	"async",
+	wrap_root(function()
+		do
+			CASE("rerun on source change")
+			local a = fluid.source(1)
+			local b = fluid.source(1)
+
+			local count = 0
+			local value = fluid.async(function()
+				a()
+				b()
+				count += 1
+				return count
+			end)
+
+			value()
+			CHECK(count == 1)
+			a(2)
+			value()
+			CHECK(count == 2)
+			b(2)
+			value()
+			CHECK(count == 3)
+		end
+
+		do
+			CASE("rerun on derived source change")
+			local num = fluid.source(0)
+
+			local text = fluid.derive(function()
+				return tostring(num())
+			end)
+
+			local count = 0
+			local value = fluid.async(function()
+				text()
+				count += 1
+				return count
+			end)
+
+			num(1)
+			value()
+			num(2)
+			value()
+			CHECK(count == 3)
+		end
+
+		do
+			CASE("state should show actual state")
+
+			local thread
+			local _, state = fluid.async(function()
+				thread = coroutine.running()
+				coroutine.yield()
+				return 0
+			end)
+
+			CHECK(state() == "busy")
+			coroutine.resume(thread :: any)
+			CHECK(state() == "ok")
+		end
+
+		do
+			CASE("run cleanups if thread is invalidated while yielding")
+			local num = fluid.source(0)
+
+			local did_run = false
+
+			local value = fluid.async(function()
+				num()
+
+				fluid.cleanup(function()
+					did_run = true
+				end)
+
+				coroutine.yield()
+				return 0
+			end)
+
+			value()
+			CHECK(did_run == false)
+			num(1)
+			CHECK(did_run == true)
+		end
+
+		do
+			CASE("dependencies only update if value is updated")
+			local count = 0
+			local thread = coroutine.running()
+
+			local value = fluid.async(function(set)
+				thread = coroutine.running()
+				set(0)
+				coroutine.yield()
+
+				set(1)
+				set(2)
+				return 3
+			end)
+
+			fluid.effect(function()
+				value()
+				count += 1
+			end)
+
+			coroutine.resume(thread)
+			CHECK(count == 4)
 		end
 	end)
 )

@@ -3,6 +3,7 @@ if _G.__DEV__ == nil then
 	_G.__DEV__ = (game and not game:GetService("RunService"):IsStudio()) :: any
 end
 
+local async = require("@self/reactive/async")
 local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local derive = require("@self/reactive/derive")
@@ -47,6 +48,7 @@ fluid.root = root
 fluid.source = source
 fluid.untrack = untrack
 fluid.interval = interval
+fluid.async = async
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 
