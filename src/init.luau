@@ -26,7 +26,7 @@ if game then
 	scheduler.provide(function(render)
 		while true do
 			local delta_time = RunService.PreRender:Wait()
-
+			graph.flush_deferred_nodes()
 			render(delta_time)
 		end
 

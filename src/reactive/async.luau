@@ -19,7 +19,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local value: graph.ReactiveNode<T> = graph.create_reactive_node(
 		graph.assert_stable_parent(),
 		function()
-			graph.defer_node(reactive_node :: any)
+			graph.defer_node(reactive_node)
 		end :: any,
 		"async"
 	)

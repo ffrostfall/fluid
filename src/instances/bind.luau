@@ -18,7 +18,7 @@ local function bind_property<T>(
 			set_property(inst, property, value())
 			return nil
 		end,
-		"eager",
+		"deferred",
 		first_value
 	)
 
