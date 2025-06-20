@@ -308,10 +308,10 @@ local function invalidate<T>(node: SourceNode<T>)
 
 	for _, node in pending_eval do
 		for _, dependent in node.depending_on do
-			run_as_unsafe(false, evaluate_node, dependent)
+			run_as_unsafe(nil, evaluate_node, dependent)
 		end
 
-		run_as_unsafe(false, evaluate_node, node)
+		run_as_unsafe(nil, evaluate_node, node)
 	end
 	table.clear(pending_eval)
 end
