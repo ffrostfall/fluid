@@ -1,7 +1,8 @@
 local bind = require("./bind")
 
 local function try_create_inst(class_name: string): Instance
-	local success, result = pcall(Instance.new, class_name)
+	local success, result =
+		pcall(Instance.new :: (name: string) -> Instance, class_name)
 	if not success then
 		-- error at the location of the create call
 		error(`Instance class "{class_name}" does not exist`, 3)

@@ -9,7 +9,6 @@
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.completion.imports.enabled": true,
 
-	// tabs over spaces
 	"editor.detectIndentation": false,
 	"editor.insertSpaces": false,
 	"prettier.useTabs": true,
@@ -27,6 +26,7 @@
 	"luau-lsp.ignoreGlobs": [
 		"**/_Index/**",
 		"build/**",
-		"vendor/**"
+		"vendor/**",
+		"types/**"
 	]
 }

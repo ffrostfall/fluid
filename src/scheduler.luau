@@ -9,9 +9,7 @@ local scheduler = {
 	connections = connections,
 }
 
-function scheduler.provide(fn: (
-	call_render: (delta_time: number) -> ()
-) -> never)
+function scheduler.provide(fn: (call_render: RenderCallback) -> never)
 	if scheduler_thread then
 		task.cancel(scheduler_thread)
 		scheduler_thread = nil

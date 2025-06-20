@@ -12,3 +12,5 @@ node_modules
 
 **/cache/**
 **/dist/**
+
+globalTypes.d.luau
