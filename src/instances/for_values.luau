@@ -17,7 +17,7 @@ local function for_values<K, V>(
 
 			return output
 		end,
-		"deferred"
+		"lazy"
 	)
 
 	return function()

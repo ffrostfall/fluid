@@ -82,13 +82,8 @@ local function values<V, KI, KO>(
 		graph.create_reactive_node(child_parent, update, "lazy", {})
 
 	return function()
-		local r = graph.evaluate_node(reactive_node)
-		if not r.success then
-			error(r)
-		end
-
-		graph.push_dependency(reactive_node)
-		return reactive_node.cached_value
+		local result = graph.evaluate_node(reactive_node)
+		return if result.success then result.value else error(result.err)
 	end
 end
 
