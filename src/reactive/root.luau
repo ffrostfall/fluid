@@ -1,7 +1,7 @@
 local graph = require("./graph")
 local types = require("./types")
 
-local refs: { [graph.Node<any>]: true | nil } = {}
+local refs: { [graph.Node<any>]: true? } = {}
 
 local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup, T...)
 	local node = graph.create_stable_node(graph.get_scope())
