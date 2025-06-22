@@ -13,57 +13,58 @@ type IndexesGraph<K, VI, VO> = {
 	output_node: graph.SourceNode<VO>,
 }
 
-local function indexes<K, VI, VO>(
-	input: types.UsedAs<{ [K]: VI }>,
-	transform: (value: () -> VI, key: K) -> VO
-): () -> { VO }
+local function values<V, KI, KO>(
+	input: types.UsedAs<{ [KI]: V }>,
+	transform: (value: V, key: () -> KI) -> KO
+): () -> { KO }
 	local parent = graph.assert_stable_parent()
 	local child_parent = graph.create_stable_node(parent)
 
-	local input_nodes: { [K]: graph.SourceNode<VI> } = {}
-	local scopes: { [K]: graph.StableNode<any> } = {}
-	local output_cache: { [K]: VO } = {}
+	local input_nodes: { [V]: graph.SourceNode<KI> } = {}
+	local scopes: { [V]: graph.StableNode<any> } = {}
+	local output_cache: { [V]: KO } = {}
 
-	local function update(): { VO }
-		local input: { [K]: VI } = read(input)
+	local function update(): { KO }
+		local input: { [KI]: V } = read(input)
 
 		-- remove unused values
-		for key in input_nodes do
-			if input[key] then
+		for value in input_nodes do
+			if input[value] then
 				continue
 			end
-			graph.destroy(scopes[key])
-			input_nodes[key] = nil
-			scopes[key] = nil
-			output_cache[key] = nil
+
+			graph.destroy(scopes[value])
+			input_nodes[value] = nil
+			scopes[value] = nil
+			output_cache[value] = nil
 		end
 
 		-- process new / changed values
 		for key, value in input do
-			local source_node: graph.SourceNode<VI> = input_nodes[key]
+			local source_node: graph.SourceNode<KI> = input_nodes[value]
 			if source_node then -- changed
 				graph.update_source_node(source_node, value)
 			else -- new
-				local value_node = graph.create_source_node(value)
+				local key_node = graph.create_source_node(key)
 				local output_node = graph.create_stable_node(child_parent)
 
-				local result: result.Identity<VO, unknown> = graph.run_as(
+				local result: result.Identity<KO, unknown> = graph.run_as(
 					output_node,
 					transform,
-					function(): VI
-						graph.push_dependency(value_node)
-						return value_node.cached_value
-					end,
-					key
+					value,
+					function(): KI
+						graph.push_dependency(key_node)
+						return key_node.cached_value
+					end
 				)
 
 				if not result.success then
 					error(tostring(result))
 				end
 
-				input_nodes[key] = value_node
-				scopes[key] = output_node
-				output_cache[key] = result.value
+				input_nodes[value] = key_node
+				scopes[value] = output_node
+				output_cache[value] = result.value
 			end
 		end
 
@@ -91,4 +92,4 @@ local function indexes<K, VI, VO>(
 	end
 end
 
-return indexes
+return values

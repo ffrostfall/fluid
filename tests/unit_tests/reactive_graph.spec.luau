@@ -689,4 +689,139 @@ TEST(
 	end)
 )
 
+TEST(
+	"values()",
+	wrap_root(function()
+		local create = fluid.create
+		local source = fluid.source
+		local values = fluid.values
+		local cleanup = fluid.cleanup
+		local effect = fluid.effect
+
+		do
+			CASE("use source")
+			local input = source({ 1, 2, 3 })
+
+			local output = values(input, function(v, k)
+				return tostring(v)
+			end)
+
+			CHECK("" .. input()[1] == output()[1])
+			CHECK("" .. input()[2] == output()[2])
+			CHECK("" .. input()[3] == output()[3])
+		end
+
+		do
+			CASE("cache result")
+			local input = source({ 1, 2, 3 })
+
+			local count = table.create(3, 0)
+
+			local output = values(input, function(v, i)
+				count[v] += 1
+				return i
+			end)
+
+			input({ 1, 3, 2 })
+
+			CHECK(output()[1]() == 1)
+			CHECK(output()[2]() == 3)
+			CHECK(output()[3]() == 2)
+
+			CHECK(count[1] == 1)
+			CHECK(count[2] == 1)
+			CHECK(count[3] == 1)
+		end
+
+		do
+			CASE("removal reflected")
+			local input = source({ 1, 2, 3 })
+
+			local destroyed = false
+
+			local output = values(input, function(v, i)
+				local s = source(tostring(i()))
+				effect(function()
+					s(tostring(i()))
+				end)
+
+				cleanup(function()
+					destroyed = true
+				end)
+
+				return s
+			end)
+
+			output()
+			input({ 1, 2 })
+
+			local t = output()
+
+			CHECK(t[1]() == "1")
+			CHECK(t[2]() == "2")
+			CHECK(t[3] == nil)
+			CHECK(destroyed == true)
+		end
+
+		do
+			CASE("removal reflected 2")
+			local input = source({ 1 })
+
+			local output = values(input, function(v, i)
+				return { v = v, i = i }
+			end)
+
+			input({ 2, 1 })
+			input({ 1 })
+
+			local t = output()
+
+			CHECK(t[1].v == 1)
+			CHECK(t[1].i() == 1)
+			CHECK(t[2] == nil)
+			CHECK(t[3] == nil)
+		end
+
+		do
+			CASE("cleanup")
+			local input = source({ 1, 2, 3 })
+
+			local count = table.create(3, 0)
+
+			local output = values(input, function(v, i)
+				cleanup(function()
+					count[i()] += 1
+				end)
+
+				return {}
+			end)
+
+			output()
+
+			CHECK(count[1] == 0)
+			CHECK(count[2] == 0)
+			CHECK(count[3] == 0)
+		end
+
+		do
+			CASE("reactive stack resets after error")
+			local n0 = graph.get_scope()
+			local input = source({ 1 })
+
+			local ok = pcall(function()
+				values(input, function()
+					error("")
+					return nil
+				end)()
+			end)
+
+			CHECK(not ok)
+
+			local n1 = graph.get_scope()
+
+			CHECK(n0 == n1)
+		end
+	end)
+)
+
 return nil

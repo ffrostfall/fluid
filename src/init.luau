@@ -11,6 +11,7 @@ local derive = require("@self/reactive/derive")
 local effect = require("@self/reactive/effect")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
+local indexes = require("@self/instances/indexes")
 local interval = require("@self/utils/interval")
 local mount = require("@self/instances/mount")
 local root = require("@self/reactive/root")
@@ -18,7 +19,7 @@ local scheduler = require("@self/scheduler")
 local source = require("@self/reactive/source")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
-local indexes = require("@self/instances/indexes")
+local values = require("@self/instances/values")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -58,6 +59,7 @@ fluid.untrack = untrack
 fluid.interval = interval
 fluid.indexes = indexes
 fluid.async = async
+fluid.values = values
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 
