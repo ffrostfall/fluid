@@ -18,6 +18,7 @@ local scheduler = require("@self/scheduler")
 local source = require("@self/reactive/source")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+local indexes = require("@self/instances/indexes")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -55,6 +56,7 @@ fluid.root = root
 fluid.source = source
 fluid.untrack = untrack
 fluid.interval = interval
+fluid.indexes = indexes
 fluid.async = async
 
 fluid.__SCHEDULER_INTERFACE = scheduler

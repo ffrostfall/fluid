@@ -29,6 +29,14 @@ local function run_garbage_collection(n: number?)
 	end
 end
 
+--[=[
+	Creates a weak table necessary for garbage collection
+]=]
+local function weak<T>(t: T & {}): T
+	setmetatable(t :: {}, { __mode = "kv" })
+	return t
+end
+
 TEST("root", function()
 	local count = 0
 
@@ -487,6 +495,196 @@ TEST(
 			text("what")
 			task.wait(0.3)
 			CHECK(size_value == 4)
+		end
+	end)
+)
+
+TEST(
+	"indexes",
+	wrap_root(function()
+		local create = fluid.create
+		local source = fluid.source
+		local effect = fluid.effect
+		local indexes = fluid.indexes
+		local cleanup = fluid.cleanup
+
+		do
+			CASE("use source")
+			local input = source({ 1, 2, 3 })
+
+			local output = indexes(input, function(v, k)
+				return tostring(v())
+			end)
+
+			CHECK("" .. input()[1] == output()[1])
+			CHECK("" .. input()[2] == output()[2])
+			CHECK("" .. input()[3] == output()[3])
+		end
+
+		do
+			CASE("cache result")
+			local input = source({ 1, 2, 3 })
+
+			local count = table.create(3, 0)
+			local output
+			local _ = fluid.root(function()
+				output = indexes(input, function(v, i)
+					count[i] += 1
+					return v
+				end)
+			end)
+
+			input({ 1, 2, 4 })
+
+			CHECK(output()[1]() == 1)
+			CHECK(output()[2]() == 2)
+			CHECK(output()[3]() == 4)
+
+			CHECK(count[1] == 1)
+			CHECK(count[2] == 1)
+			CHECK(count[3] == 1)
+		end
+
+		do
+			CASE("removal reflected")
+			local input = source({ 1, 2, 3 })
+
+			local destroyed = false
+
+			local output = indexes(input, function(v, i)
+				local s = source()
+
+				effect(function()
+					s(tostring(v()))
+				end)
+
+				cleanup(function()
+					destroyed = true
+				end)
+
+				return s
+			end)
+
+			output()
+
+			input({ 1, 2 })
+
+			local t = output()
+
+			CHECK(t[1]() == "1")
+			CHECK(t[2]() == "2")
+			CHECK(t[3] == nil)
+			CHECK(destroyed == true)
+		end
+
+		do
+			CASE("garbage collection")
+			do -- check that `output` does not allow gc of `input`
+				local input = source({})
+
+				local _derived = indexes(input, function(v, i)
+					return v
+				end)
+
+				local wref = weak({ input })
+
+				input = NIL
+
+				run_garbage_collection()
+				CHECK(wref[1])
+			end
+
+			do -- check that `input` allows gc of `output`
+				local input = source({})
+
+				local output = indexes(input, function(v, i)
+					return v, i
+				end)
+
+				local wref = weak({ output })
+
+				output = NIL
+
+				run_garbage_collection()
+				CHECK(not wref[1])
+			end
+		end
+
+		do
+			CASE("cleanup")
+			local input = source({ 1, 2, 3 })
+
+			local count = table.create(3, 0)
+
+			local output = indexes(input, function(v, i)
+				cleanup(function()
+					count[i] += 1
+				end)
+
+				return {}
+			end)
+
+			output()
+
+			CHECK(count[1] == 0)
+			CHECK(count[2] == 0)
+			CHECK(count[3] == 0)
+		end
+
+		do
+			CASE("reactive stack resets after error")
+			local scope = graph.get_scope()
+
+			local input = source({ 1 })
+
+			local ok = pcall(function()
+				indexes(input, function()
+					error("")
+					return NIL
+				end)()
+			end)
+
+			CHECK(not ok)
+			CHECK(scope == graph.get_scope())
+		end
+
+		-- practical example based on the graph - recursive update test
+		do
+			CASE("recursive update")
+			local items = source({ 1 })
+
+			local updated = table.create(100, 0)
+
+			effect(indexes(items, function(item)
+				effect(function()
+					item()
+					updated[1] += 1
+				end)
+
+				effect(function()
+					item()
+					updated[2] += 1
+				end)
+
+				return {}
+			end))
+
+			effect(function()
+				items()
+				updated[3] += 1
+			end)
+
+			effect(function()
+				items()
+				updated[4] += 1
+			end)
+
+			items({ 2 })
+
+			CHECK(updated[1] == 2)
+			CHECK(updated[2] == 2)
+			CHECK(updated[3] == 2)
+			CHECK(updated[4] == 2)
 		end
 	end)
 )
