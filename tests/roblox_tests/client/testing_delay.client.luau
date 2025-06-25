@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local fluid = require(ReplicatedStorage.fluid)
 local create = fluid.create
-local indexes = fluid.indexes
+local keys = fluid.for_keys
 local mount = fluid.mount
 local source = fluid.source
 
@@ -33,7 +33,7 @@ mount(function()
 		Size = UDim2.fromScale(1, 1),
 
 		create("Frame")({
-			indexes(list_source, some_component, 10),
+			keys(list_source, some_component, 10),
 		}),
 	})
 end, parent_screen)
