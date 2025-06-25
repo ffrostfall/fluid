@@ -15,10 +15,11 @@ type IndexesGraph<K, VI, VO> = {
 
 local function indexes<K, VI, VO>(
 	input: types.UsedAs<{ [K]: VI }>,
-	transform: (value: () -> VI, key: K) -> VO
+	transform: (value: () -> VI, key: K) -> VO,
+	delay_destroy: number?
 ): () -> { VO }
 	local parent = graph.assert_stable_parent()
-	local child_parent = graph.create_stable_node(parent)
+	local child_parent = graph.create_stable_node(parent, delay_destroy)
 
 	local input_nodes: { [K]: graph.SourceNode<VI> } = {}
 	local scopes: { [K]: graph.StableNode<any> } = {}

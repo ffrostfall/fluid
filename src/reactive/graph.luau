@@ -26,6 +26,8 @@ export type StableNode<T> = {
 
 	-- Cleanup functions run when the node dies
 	read cleanups: { () -> () },
+
+	read delay_destroy: number?,
 }
 
 export type ReactiveNode<T> = {
@@ -378,7 +380,10 @@ function graph.create_reactive_node<T>(
 	return node
 end
 
-function graph.create_stable_node<T>(parent: Node<T> | false)
+function graph.create_stable_node<T>(
+	parent: Node<T> | false,
+	delay_destroy: number?
+)
 	local node: StableNode<T> = {
 		parent = parent,
 
@@ -390,6 +395,8 @@ function graph.create_stable_node<T>(parent: Node<T> | false)
 
 		children = {},
 		cleanups = {},
+
+		delay_destroy = delay_destroy,
 	}
 
 	if parent then
