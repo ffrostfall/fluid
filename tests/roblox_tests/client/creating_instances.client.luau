@@ -92,6 +92,13 @@ local function list()
 
 				input.Text = ""
 			end,
+
+			fluid.tags({ "tag1", "tag2" }),
+			fluid.tags({
+				function()
+					return items()[#items()]
+				end,
+			}),
 		}),
 
 		fluid.create("TextButton")({

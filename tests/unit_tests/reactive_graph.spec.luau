@@ -500,19 +500,19 @@ TEST(
 )
 
 TEST(
-	"indexes",
+	"for_keys()",
 	wrap_root(function()
 		local create = fluid.create
 		local source = fluid.source
 		local effect = fluid.effect
-		local indexes = fluid.indexes
+		local for_keys = fluid.for_keys
 		local cleanup = fluid.cleanup
 
 		do
 			CASE("use source")
 			local input = source({ 1, 2, 3 })
 
-			local output = indexes(input, function(v, k)
+			local output = for_keys(input, function(v, k)
 				return tostring(v())
 			end)
 
@@ -528,7 +528,7 @@ TEST(
 			local count = table.create(3, 0)
 			local output
 			local _ = fluid.root(function()
-				output = indexes(input, function(v, i)
+				output = for_keys(input, function(v, i)
 					count[i] += 1
 					return v
 				end)
@@ -551,7 +551,7 @@ TEST(
 
 			local destroyed = false
 
-			local output = indexes(input, function(v, i)
+			local output = for_keys(input, function(v, i)
 				local s = source()
 
 				effect(function()
@@ -582,7 +582,7 @@ TEST(
 			do -- check that `output` does not allow gc of `input`
 				local input = source({})
 
-				local _derived = indexes(input, function(v, i)
+				local _derived = for_keys(input, function(v, i)
 					return v
 				end)
 
@@ -597,7 +597,7 @@ TEST(
 			do -- check that `input` allows gc of `output`
 				local input = source({})
 
-				local output = indexes(input, function(v, i)
+				local output = for_keys(input, function(v, i)
 					return v, i
 				end)
 
@@ -616,7 +616,7 @@ TEST(
 
 			local count = table.create(3, 0)
 
-			local output = indexes(input, function(v, i)
+			local output = for_keys(input, function(v, i)
 				cleanup(function()
 					count[i] += 1
 				end)
@@ -638,7 +638,7 @@ TEST(
 			local input = source({ 1 })
 
 			local ok = pcall(function()
-				indexes(input, function()
+				for_keys(input, function()
 					error("")
 					return NIL
 				end)()
@@ -655,7 +655,7 @@ TEST(
 
 			local updated = table.create(100, 0)
 
-			effect(indexes(items, function(item)
+			effect(for_keys(items, function(item)
 				effect(function()
 					item()
 					updated[1] += 1
@@ -690,11 +690,11 @@ TEST(
 )
 
 TEST(
-	"values()",
+	"for_values()",
 	wrap_root(function()
 		local create = fluid.create
 		local source = fluid.source
-		local values = fluid.values
+		local for_values = fluid.for_values
 		local cleanup = fluid.cleanup
 		local effect = fluid.effect
 
@@ -702,7 +702,7 @@ TEST(
 			CASE("use source")
 			local input = source({ 1, 2, 3 })
 
-			local output = values(input, function(v, k)
+			local output = for_values(input, function(v, k)
 				return tostring(v)
 			end)
 
@@ -717,7 +717,7 @@ TEST(
 
 			local count = table.create(3, 0)
 
-			local output = values(input, function(v, i)
+			local output = for_values(input, function(v, i)
 				count[v] += 1
 				return i
 			end)
@@ -739,7 +739,7 @@ TEST(
 
 			local destroyed = false
 
-			local output = values(input, function(v, i)
+			local output = for_values(input, function(v, i)
 				local s = source(tostring(i()))
 				effect(function()
 					s(tostring(i()))
@@ -767,7 +767,7 @@ TEST(
 			CASE("removal reflected 2")
 			local input = source({ 1 })
 
-			local output = values(input, function(v, i)
+			local output = for_values(input, function(v, i)
 				return { v = v, i = i }
 			end)
 
@@ -788,7 +788,7 @@ TEST(
 
 			local count = table.create(3, 0)
 
-			local output = values(input, function(v, i)
+			local output = for_values(input, function(v, i)
 				cleanup(function()
 					count[i()] += 1
 				end)
@@ -809,7 +809,7 @@ TEST(
 			local input = source({ 1 })
 
 			local ok = pcall(function()
-				values(input, function()
+				for_values(input, function()
 					error("")
 					return nil
 				end)()

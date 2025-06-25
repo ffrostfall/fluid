@@ -2,6 +2,5 @@
 	"recommendations": [
 		"JohnnyMorganz.stylua",
 		"JohnnyMorganz.luau-lsp",
-		"checkraisefold.blink-vscode"
 	]
 }
