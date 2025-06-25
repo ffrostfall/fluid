@@ -28,5 +28,6 @@
 		"build/**",
 		"vendor/**",
 		"types/**"
-	]
+	],
+	"editor.formatOnSave": true
 }
