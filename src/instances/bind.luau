@@ -85,7 +85,6 @@ end
 local function bind_reactive_child(
 	inst: Instance,
 	func: () -> { Instance } | Instance,
-	dtor_delay: number?
 )
 	local stable_node = graph.assert_stable_parent()
 
