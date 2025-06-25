@@ -1,14 +1,12 @@
-local CollectionService = game:GetService("CollectionService")
-
 local action = require("../instances/action")
 local cleanup = require("../reactive/cleanup")
 local graph = require("../reactive/graph")
 
 local function bind_tag(instance: Instance, tag: string)
-	CollectionService:AddTag(instance, tag)
+	instance:AddTag(tag)
 
 	cleanup(function()
-		CollectionService:RemoveTag(instance, tag)
+		instance:RemoveTag(tag)
 	end)
 end
 
