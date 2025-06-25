@@ -121,8 +121,13 @@ local function list()
 			fluid.create("UIListLayout")({}),
 
 			fluid.for_values(items, function(key, value)
+				local color = fluid.source(Color3.new())
+				local lerped = fluid.lerp(color, 0.1)
+				color(Color3.new(1, 0, 0))
+
 				return fluid.create("TextLabel")({
 					Size = UDim2.fromOffset(125, 50),
+					BackgroundColor3 = lerped,
 
 					Name = key,
 					Text = value,

@@ -13,6 +13,7 @@ local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
 local interval = require("@self/utils/interval")
+local lerp = require("@self/anim/lerp")
 local mount = require("@self/instances/mount")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
@@ -60,6 +61,8 @@ fluid.interval = interval
 fluid.for_keys = for_keys
 fluid.async = async
 fluid.for_values = for_values
+
+fluid.lerp = lerp
 
 fluid.__SCHEDULER_INTERFACE = scheduler
 
