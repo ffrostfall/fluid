@@ -84,7 +84,7 @@ end
 
 local function bind_reactive_child(
 	inst: Instance,
-	func: () -> { Instance } | Instance,
+	func: () -> { Instance } | Instance
 )
 	local stable_node = graph.assert_stable_parent()
 
