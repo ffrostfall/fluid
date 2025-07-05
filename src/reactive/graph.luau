@@ -51,6 +51,7 @@ export type ReactiveNode<T> = {
 
 	read cleanups: { () -> () },
 
+	next_depending_on_index_replacement: number,
 	depending_on: { SourceNode<T> | ReactiveNode<T> },
 	read dependents: { ReactiveNode<T> },
 }
@@ -107,7 +108,14 @@ local function defer_node<T>(node: ReactiveNode<T>)
 	table.insert(deferred_nodes, node)
 end
 
-local function push_dependency<T>(node: SourceNode<T> | ReactiveNode<T>)
+local function find_and_swap_pop<T>(t: { T }, v: T)
+	local i = table.find(t, v) :: number
+	local n = #t
+	t[i] = t[n]
+	t[n] = nil
+end
+
+local function replace_dependency<T>(node: SourceNode<T> | ReactiveNode<T>)
 	local scope = get_scope()
 	if not (scope and scope.effect) then
 		return
@@ -115,15 +123,22 @@ local function push_dependency<T>(node: SourceNode<T> | ReactiveNode<T>)
 
 	assert(scope ~= node, `node tried to add itself as dependency`)
 
-	table.insert(node.dependents, scope)
-	table.insert(scope.depending_on, node)
-end
+	local replacement_index = scope.next_depending_on_index_replacement
+	local depending_on = scope.depending_on
+	assert(replacement_index, `cavalo esperto`)
 
-local function find_and_swap_pop<T>(t: { T }, v: T)
-	local i = table.find(t, v) :: number
-	local n = #t
-	t[i] = t[n]
-	t[n] = nil
+	scope.next_depending_on_index_replacement = replacement_index + 1
+	local previous_dependency = depending_on[replacement_index]
+	if node == previous_dependency then
+		return
+	end
+
+	if previous_dependency then
+		find_and_swap_pop(previous_dependency.dependents, node)
+	end
+	depending_on[replacement_index] = node
+
+	table.insert(node.dependents, scope)
 end
 
 local function flush_cleanups<T>(node: Node<T>)
@@ -143,6 +158,15 @@ local function remove_dependencies<T>(node: Node<T>)
 		find_and_swap_pop(dependency.dependents, node)
 	end
 	table.clear(node.depending_on)
+end
+local function remove_unused_dependencies<T>(node: ReactiveNode<T>)
+	local depending_on = node.depending_on
+	for i = node.next_depending_on_index_replacement, #depending_on do
+		local dependency = depending_on[i]
+		find_and_swap_pop(dependency.dependents, node)
+		depending_on[i] = nil
+	end
+	node.next_depending_on_index_replacement = 1
 end
 
 local function destroy<T>(node: Node<T>)
@@ -212,7 +236,6 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 
 	flush_cleanups(node)
 	destroy_owned(node)
-	remove_dependencies(node)
 
 	node.state = coroutine.running()
 	local previous_result = node.cached_value
@@ -221,8 +244,10 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 	-- want to re-run the node even if it errored
 	node.state = "clean"
 
+	remove_unused_dependencies(node)
+
 	if call.success then
-		push_dependency(node)
+		replace_dependency(node)
 
 		if
 			node.evaluation ~= "eager"
@@ -266,7 +291,7 @@ local function evaluate_node<T>(
 	node: SourceNode<T> | ReactiveNode<T>
 ): result.Identity<T, string>
 	if node.effect == false or node.state == "clean" then
-		push_dependency(node :: SourceNode<T> | ReactiveNode<T>)
+		replace_dependency(node :: SourceNode<T> | ReactiveNode<T>)
 
 		return result.ok(node.cached_value)
 	elseif coroutine.running() == node.state then
@@ -331,7 +356,7 @@ local graph = {
 	invalidate = invalidate,
 	destroy = destroy,
 	run_as_unsafe = run_as_unsafe,
-	push_dependency = push_dependency,
+	push_dependency = replace_dependency,
 	evaluate_node = evaluate_node,
 	run_as = run_as,
 }
@@ -362,6 +387,7 @@ function graph.create_reactive_node<T>(
 		evaluation = evaluation,
 		state = "dirty",
 		cached_value = cached_value,
+		next_depending_on_index_replacement = 1,
 		depending_on = {},
 		dependents = {},
 
