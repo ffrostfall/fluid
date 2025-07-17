@@ -5,6 +5,7 @@ end
 
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
+local bind = require("@self/instances/bind")
 local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local derive = require("@self/reactive/derive")
@@ -61,6 +62,7 @@ local fluid = {}
 fluid.create = create
 fluid.mount = mount
 fluid.tags = tags
+fluid.bind = bind
 
 -- actions
 fluid.action = action.create
