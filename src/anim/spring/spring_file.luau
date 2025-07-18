@@ -7,8 +7,8 @@ local oklab = require("../../utils/oklab")
 local read = require("../../utils/read")
 local types = require("../../reactive/types")
 
-type AnimatableDataTypeEnum = "color" | "vector" | "udim" | "udim2"
-type AnimatableDataType = Color3 | vector | UDim | UDim2
+type AnimatableDataTypeEnum = "color" | "vector" | "udim" | "udim2" | "number"
+type AnimatableDataType = Color3 | vector | UDim | UDim2 | number
 
 -- In order to support springing multiple data types, we need to abstract values into an array.
 -- It sucks, but it is necessary to support things like UDim2 and Color3.
@@ -47,6 +47,8 @@ local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { 
 		return "udim", { value.Scale, value.Offset }
 	elseif type(value) == "vector" then
 		return "vector", { value.x, value.y, value.z }
+	elseif type(value) == "number" then
+		return "number", { value }
 	end
 
 	error("unreachable")
@@ -67,6 +69,8 @@ local function unpack_type(
 		return UDim.new(array[1], array[2])
 	elseif type_string == "udim2" then
 		return UDim2.new(array[1], array[2], array[3], array[4])
+	elseif type_string == "number" then
+		return array[1]
 	end
 
 	return error("unreachable")
