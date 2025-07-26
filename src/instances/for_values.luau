@@ -28,9 +28,14 @@ local function values<V, KI, KO>(
 	local function update(): { KO }
 		local input: { [KI]: V } = read(input)
 
+		local reversed: { [V]: KI } = {}
+		for key, value in input do
+			reversed[value] = key
+		end
+
 		-- remove unused values
 		for value in input_nodes do
-			if input[value] then
+			if reversed[value] then
 				continue
 			end
 
@@ -44,7 +49,7 @@ local function values<V, KI, KO>(
 		for key, value in input do
 			local source_node: graph.SourceNode<KI> = input_nodes[value]
 			if source_node then -- changed
-				graph.update_source_node(source_node, value)
+				graph.update_source_node(source_node, key)
 			else -- new
 				local key_node = graph.create_source_node(key)
 				local output_node = graph.create_stable_node(child_parent)
