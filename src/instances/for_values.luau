@@ -1,6 +1,5 @@
 local graph = require("../reactive/graph")
 local read = require("../utils/read")
-local result = require("../result")
 local types = require("../reactive/types")
 
 type IndexesGraph<K, VI, VO> = {
@@ -54,23 +53,15 @@ local function values<V, KI, KO>(
 				local key_node = graph.create_source_node(key)
 				local output_node = graph.create_stable_node(child_parent)
 
-				local result: result.Identity<KO, unknown> = graph.run_as(
-					output_node,
-					transform,
-					value,
-					function(): KI
-						graph.push_dependency(key_node)
-						return key_node.cached_value
-					end
-				)
-
-				if not result.success then
-					error(tostring(result))
-				end
-
 				input_nodes[value] = key_node
 				scopes[value] = output_node
-				output_cache[value] = result.value
+
+				local output_value = graph.run_as(output_node, transform, value, function(): KI
+					graph.push_dependency(key_node)
+					return key_node.cached_value
+				end)
+
+				output_cache[value] = output_value
 			end
 		end
 
@@ -87,8 +78,7 @@ local function values<V, KI, KO>(
 	local reactive_node = graph.create_reactive_node(child_parent, update, "lazy", {})
 
 	return function()
-		local result = graph.evaluate_node(reactive_node)
-		return if result.success then result.value else error(result.err)
+		return graph.evaluate_node(reactive_node) :: any
 	end
 end
 

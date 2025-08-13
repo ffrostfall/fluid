@@ -2,7 +2,7 @@ local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local bind = require("@src/instances/bind")
 local fluid = require("@src/")
 local graph = require("@src/reactive/graph")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies

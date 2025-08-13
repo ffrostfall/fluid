@@ -1,6 +1,6 @@
 local graph = require("./graph")
 local logging = require("../logging")
-local task = task or require("@lune/task")
+local task = task or require("@lute/task")
 
 type State = "busy" | "ok"
 
@@ -39,12 +39,12 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 			graph.destroy_owned(value)
 
 			value.state = coroutine.running()
-			local call = graph.run_as(value, callback, set)
+			local success, value = pcall(graph.run_as, value, callback, set)
 
-			if call.success then
-				set(call.value)
+			if success then
+				set(value)
 			else
-				logging.warn(`async effect error: {call.err} {call.trace}`)
+				logging.warn(`async effect error: {value}`)
 			end
 
 			graph.update_source_node(state, "ok")
@@ -52,7 +52,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 
 		graph.push_cleanup(reactive_node, function()
-			task.cancel(thread)
+			coroutine.close(thread)
 		end)
 	end
 

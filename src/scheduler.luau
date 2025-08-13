@@ -1,4 +1,4 @@
-local task = (task or require("@lune/task")) :: typeof(task)
+local task = (task or require("@lute/task")) :: typeof(task)
 
 type RenderCallback = (delta_time: number) -> ()
 

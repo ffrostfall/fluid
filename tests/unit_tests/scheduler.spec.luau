@@ -1,7 +1,7 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local signal = require("@vendor/signal")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
 local render_event: signal.Identity<number> = signal()
