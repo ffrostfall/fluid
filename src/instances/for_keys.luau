@@ -15,7 +15,7 @@ type IndexesGraph<K, VI, VO> = {
 
 local function indexes<K, VI, VO>(
 	input: types.UsedAs<{ [K]: VI }>,
-	transform: (value: () -> VI, key: K) -> VO,
+	transform: (value: () -> VI, key: K) -> (VO, number?),
 	delay_destroy: number?
 ): () -> { VO }
 	local parent = graph.assert_stable_parent()

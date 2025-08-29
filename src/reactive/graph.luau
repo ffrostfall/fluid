@@ -27,8 +27,6 @@ export type StableNode<T> = {
 
 	-- Cleanup functions run when the node dies
 	read cleanups: { () -> () },
-
-	read delay_destroy: number?,
 }
 
 export type ReactiveNode<T> = {
@@ -77,11 +75,7 @@ local function set_scope(node: Node<any>?)
 	processing_node[coroutine.running()] = node
 end
 
-local function run_as_unsafe<T, U...>(
-	owner: Node<any>?,
-	fn: (U...) -> T,
-	...: U...
-): result.Identity<T, unknown>
+local function run_as_unsafe<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): T
 	local previous_processing = get_scope()
 	set_scope(owner)
 	local call = fn(...)
@@ -385,7 +379,7 @@ function graph.create_reactive_node<T>(
 	return node
 end
 
-function graph.create_stable_node<T>(parent: Node<T> | false, delay_destroy: number?)
+function graph.create_stable_node<T>(parent: Node<T> | false)
 	local node: StableNode<T> = {
 		parent = parent,
 
@@ -397,8 +391,6 @@ function graph.create_stable_node<T>(parent: Node<T> | false, delay_destroy: num
 
 		children = {},
 		cleanups = {},
-
-		delay_destroy = delay_destroy,
 	}
 
 	if parent then
