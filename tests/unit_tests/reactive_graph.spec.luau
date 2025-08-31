@@ -5,6 +5,13 @@ local task = require("@lune/task")
 
 local WEAK_TABLE = { __mode = "kv" }
 
+local scheduler = fluid.__SCHEDULER_INTERFACE
+local provided_scheduler = fluid.provide_scheduler()
+
+local function step_scheduler(n: number?)
+	task.spawn(provided_scheduler, n or 1 / 60)
+end
+
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
 ]=]
@@ -476,21 +483,26 @@ TEST(
 			local text = fluid.source("h")
 
 			local value = fluid.async(function(set)
-				task.wait(0.1)
+				scheduler.wait(1)
 
 				return #text()
 			end)
 
-			local size_value = 0
+			local size_value: number? = 0
 			fluid.effect(function()
 				size_value = value()
 			end)
 
 			text("hi")
-			task.wait(0.3)
+			step_scheduler(0.5)
+			CHECK(size_value == nil)
+			step_scheduler(0.5)
 			CHECK(size_value == 2)
 			text("what")
-			task.wait(0.3)
+
+			step_scheduler(0.5)
+			CHECK(size_value == 2)
+			step_scheduler(0.5)
 			CHECK(size_value == 4)
 		end
 	end)
@@ -696,8 +708,7 @@ TEST(
 			CHECK(#data() == 1)
 			items({})
 			CHECK(#data() == 1)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#data() == 0)
 		end
 
@@ -715,14 +726,16 @@ TEST(
 			items({})
 			CHECK(#data() == 1)
 			CHECK(updates == 1)
-			task.wait()
+			step_scheduler()
 			items({ 1 }) -- should cancel thread
 			-- we need to evaluate for_keys again so it can cancel the thread.
 			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
-			CHECK(#data() == 1)
-			task.wait()
-			CHECK(#data() == 1)
+
 			CHECK(updates == 1)
+			CHECK(#data() == 1)
+			step_scheduler()
+			CHECK(#data() == 1)
+			CHECK(updates == 2)
 		end
 	end)
 )
@@ -898,8 +911,7 @@ TEST(
 			CHECK(#data() == 1)
 			items({})
 			CHECK(#data() == 1)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#data() == 0)
 		end
 
@@ -917,14 +929,15 @@ TEST(
 			items({})
 			CHECK(#data() == 1)
 			CHECK(updates == 1)
-			task.wait()
+			step_scheduler()
 			items({ 1 }) -- should cancel thread
 			-- we need to evaluate for_keys again so it can cancel the thread.
 			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
-			CHECK(#data() == 1)
-			task.wait()
-			CHECK(#data() == 1)
 			CHECK(updates == 1)
+			CHECK(#data() == 1)
+			step_scheduler()
+			CHECK(#data() == 1)
+			CHECK(updates == 2)
 		end
 	end)
 )
@@ -989,8 +1002,7 @@ TEST(
 			CHECK(#node() == 1)
 			condition_source(false)
 			CHECK(#node() == 2)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#node() == 1)
 		end
 		do
@@ -1010,9 +1022,9 @@ TEST(
 			CHECK(#node() == 1)
 			condition_source(false)
 			CHECK(#node() == 2)
-			task.wait()
+			step_scheduler()
 			condition_source(true)
-			task.wait()
+			step_scheduler()
 			CHECK(#node() == 2)
 			CHECK(updates == 1)
 		end
@@ -1104,8 +1116,8 @@ TEST(
 			CHECK(#node() == 3)
 			condition_source(4)
 			CHECK(#node() == 3)
-			task.wait()
-			task.wait()
+			step_scheduler()
+			step_scheduler()
 			CHECK(#node() == 0)
 		end
 
@@ -1135,9 +1147,9 @@ TEST(
 			CHECK(#node() == 3)
 			condition_source(4)
 			CHECK(#node() == 3)
-			task.wait()
+			step_scheduler()
 			condition_source(2)
-			task.wait()
+			step_scheduler()
 			CHECK(instantiations == 1)
 			CHECK(#node() == 1)
 		end

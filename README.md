@@ -19,7 +19,7 @@ This section details the interesting bits where Fluid has an advantage.
 - Push-pull reactive graph with deferred mode
 - `interval` utility to poll values. `fluid.interval` will run at the specified hz
 - Exported `UsedAs` type
-- `_G.__DEV__` for development mode, which will enhance error messages & print useful information at the cost of performance.
+- `_G.__DEV__` or `fluid.flags.dev_mode` for development mode, which will enhance error messages & print useful information at the cost of performance.
 
 ## Prior Art
 
