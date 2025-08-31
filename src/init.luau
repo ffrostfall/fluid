@@ -1,8 +1,3 @@
-if _G.__DEV__ == nil then
-	-- thanks type state
-	_G.__DEV__ = (game and not game:GetService("RunService"):IsStudio()) :: any
-end
-
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
@@ -11,6 +6,7 @@ local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
 local derive = require("@self/reactive/derive")
 local effect = require("@self/reactive/effect")
+local flags = require("@self/flags")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
@@ -29,7 +25,6 @@ local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
 local show_delay = require("@self/utils/show_delay")
 local switch_delay = require("@self/utils/switch_delay")
-
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
@@ -106,5 +101,8 @@ fluid.provide_scheduler = function(): (delta_time: number) -> ()
 end
 
 fluid.__SCHEDULER_INTERFACE = scheduler
+
+-- Flags
+fluid.flags = flags
 
 return fluid
