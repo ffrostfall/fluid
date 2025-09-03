@@ -16,12 +16,8 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	number = math.lerp,
 	Vector3 = vector_lerp,
 	Vector2 = general_lerp,
-	Color3 = function(a: Color3, b: Color3, t: number)
-		return a:Lerp(b, t)
-	end,
-	CFrame = function(a: CFrame, b: CFrame, t: number)
-		return a:Lerp(b, t)
-	end,
+	Color3 = Color3.new(0, 0, 0).Lerp,
+	CFrame = CFrame.identity.Lerp,
 	Rect = function(a: Rect, b: Rect, t: number)
 		return Rect.new(
 			general_lerp(a.Min, b.Min, t) :: Vector2,
@@ -31,14 +27,7 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	UDim = function(a: UDim, b: UDim, t: number)
 		return UDim.new(math.lerp(a.Scale, b.Scale, t), math.lerp(a.Offset, b.Offset, t))
 	end,
-	UDim2 = function(a: UDim2, b: UDim2, t: number)
-		return UDim2.new(
-			math.lerp(a.X.Scale, b.X.Scale, t),
-			math.lerp(a.X.Offset, b.X.Offset, t),
-			math.lerp(a.Y.Scale, b.Y.Scale, t),
-			math.lerp(a.Y.Offset, b.Y.Offset, t)
-		)
-	end,
+	UDim2 = UDim2.new().Lerp,
 }
 
 local lerp = {}
