@@ -69,24 +69,8 @@ local function bind_event(inst: Instance, event_name: string, func: <T...>(T...)
 	end)
 end
 
-local function find_delay(node: graph.StableNode<any> | graph.ReactiveNode<any>): number
-	if node.delay_destroy and node.delay_destroy > 0 then
-		return node.delay_destroy
-	end
-
-	local children = node.children
-	if next(children) then
-		for _, children_node in children do
-			return find_delay(children_node)
-		end
-	end
-
-	return 0
-end
-
 local function bind_reactive_child(inst: Instance, func: () -> { Instance } | Instance)
 	local stable_node = graph.assert_stable_parent()
-	local delay_destroy: number = find_delay(stable_node)
 
 	local property_node = graph.create_reactive_node(
 		stable_node,
@@ -126,7 +110,6 @@ local function bind_reactive_child(inst: Instance, func: () -> { Instance } | In
 
 			for old_inst in value do
 				if not table.find(source_result, old_inst) then
-					task.delay(delay_destroy, old_inst.Destroy, old_inst)
 					value[old_inst] = nil
 				end
 			end
