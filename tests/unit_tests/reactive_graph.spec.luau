@@ -504,6 +504,7 @@ TEST(
 		local effect = fluid.effect
 		local for_keys = fluid.for_keys
 		local cleanup = fluid.cleanup
+		local root = fluid.root
 
 		do
 			CASE("use source")
@@ -683,6 +684,46 @@ TEST(
 			CHECK(updated[3] == 2)
 			CHECK(updated[4] == 2)
 		end
+
+		do
+			CASE("remove after delay")
+			local items = source({ 1 })
+
+			local data = for_keys(items, function(value)
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			task.wait()
+			task.wait()
+			CHECK(#data() == 0)
+		end
+
+		do
+			CASE("re-activate inactive node")
+			local items = source({ 1 })
+			local updates = 0
+
+			local data = for_keys(items, function(value)
+				updates += 1
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+			task.wait()
+			items({ 1 }) -- should cancel thread
+			-- we need to evaluate for_keys again so it can cancel the thread.
+			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
+			CHECK(#data() == 1)
+			task.wait()
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+		end
 	end)
 )
 
@@ -845,6 +886,46 @@ TEST(
 
 			CHECK(n0 == n1)
 		end
+
+		do
+			CASE("remove after delay")
+			local items = source({ 1 })
+
+			local data = for_values(items, function(value)
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			task.wait()
+			task.wait()
+			CHECK(#data() == 0)
+		end
+
+		do
+			CASE("re-activate inactive node")
+			local items = source({ 1 })
+			local updates = 0
+
+			local data = for_values(items, function(value)
+				updates += 1
+				return value, 0
+			end)
+
+			CHECK(#data() == 1)
+			items({})
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+			task.wait()
+			items({ 1 }) -- should cancel thread
+			-- we need to evaluate for_keys again so it can cancel the thread.
+			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
+			CHECK(#data() == 1)
+			task.wait()
+			CHECK(#data() == 1)
+			CHECK(updates == 1)
+		end
 	end)
 )
 
@@ -868,6 +949,197 @@ TEST(
 			condition_source(false)
 
 			CHECK(node() == "truthy condition")
+		end
+	end)
+)
+
+TEST(
+	"show delay",
+	wrap_root(function()
+		do
+			CASE("works")
+			local condition_source = fluid.source(true)
+
+			local node = fluid.show_delay(function()
+				return not condition_source()
+			end, function()
+				return "truthy condition"
+			end, function()
+				return "falsy condition"
+			end)
+
+			CHECK(node()[1] == "falsy condition")
+
+			condition_source(false)
+
+			CHECK(node()[1] == "truthy condition")
+		end
+		do
+			CASE("delay")
+			local condition_source = fluid.source(true)
+
+			local node = fluid.show_delay(function()
+				return not condition_source()
+			end, function()
+				return "truthy condition", 0
+			end, function()
+				return "falsy condition", 0
+			end)
+
+			CHECK(#node() == 1)
+			condition_source(false)
+			CHECK(#node() == 2)
+			task.wait()
+			task.wait()
+			CHECK(#node() == 1)
+		end
+		do
+			CASE("re-activate destroyed nodes")
+			local condition_source = fluid.source(true)
+			local updates = 0
+
+			local node = fluid.show_delay(function()
+				return not condition_source()
+			end, function()
+				updates += 1
+				return "truthy condition", 0
+			end, function()
+				return "falsy condition", 0
+			end)
+
+			CHECK(#node() == 1)
+			condition_source(false)
+			CHECK(#node() == 2)
+			task.wait()
+			condition_source(true)
+			task.wait()
+			CHECK(#node() == 2)
+			CHECK(updates == 1)
+		end
+	end)
+)
+
+TEST(
+	"switch",
+	wrap_root(function()
+		CASE("works")
+		do
+			local condition_source = fluid.source(1)
+
+			local node = fluid.switch(condition_source)({
+				[1] = function()
+					return 1
+				end,
+				[2] = function()
+					return 2
+				end,
+				[3] = function()
+					return 3
+				end,
+			})
+
+			CHECK(node() == 1)
+			condition_source(2)
+			CHECK(node() == 2)
+			condition_source(3)
+			CHECK(node() == 3)
+			condition_source(4)
+			CHECK(node() == nil)
+			condition_source(1)
+			CHECK(node() == 1)
+		end
+	end)
+)
+
+TEST(
+	"switch delay",
+	wrap_root(function()
+		CASE("works")
+		do
+			local condition_source = fluid.source(1)
+
+			local node = fluid.switch_delay(condition_source)({
+				[1] = function()
+					return 1, nil
+				end,
+				[2] = function()
+					return 2, nil
+				end,
+				[3] = function()
+					return 3, nil
+				end,
+			})
+
+			CHECK(node()[1] == 1)
+			condition_source(2)
+			CHECK(node()[1] == 2)
+			condition_source(3)
+			CHECK(node()[1] == 3)
+			condition_source(4)
+			CHECK(node()[1] == nil)
+			condition_source(1)
+			CHECK(node()[1] == 1)
+		end
+
+		CASE("delay should destroy")
+		do
+			local condition_source = fluid.source(1)
+
+			local node = fluid.switch_delay(condition_source)({
+				[1] = function()
+					return 1, 0
+				end,
+				[2] = function()
+					return 2, 0
+				end,
+				[3] = function()
+					return 3, 0
+				end,
+			})
+
+			CHECK(node()[1] == 1)
+			condition_source(2)
+			CHECK(#node() == 2)
+			condition_source(3)
+			CHECK(#node() == 3)
+			condition_source(4)
+			CHECK(#node() == 3)
+			task.wait()
+			task.wait()
+			CHECK(#node() == 0)
+		end
+
+		CASE("reactivate nodes")
+		do
+			local condition_source = fluid.source(1)
+			local instantiations = 0
+
+			local node = fluid.switch_delay(condition_source)({
+				[1] = function()
+					return 1, 0
+				end,
+				[2] = function()
+					instantiations += 1
+					return 2, 0
+				end,
+				[3] = function()
+					return 3, 0
+				end,
+			})
+
+			CHECK(node()[1] == 1)
+			condition_source(2)
+			CHECK(#node() == 2)
+			CHECK(instantiations == 1)
+			condition_source(3)
+			CHECK(#node() == 3)
+			condition_source(4)
+			CHECK(#node() == 3)
+			task.wait()
+			condition_source(2)
+			task.wait()
+			CHECK(instantiations == 1)
+			CHECK(#node() == 1)
 		end
 	end)
 )

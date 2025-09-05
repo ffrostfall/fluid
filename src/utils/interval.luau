@@ -1,23 +1,32 @@
 local graph = require("../reactive/graph")
 local scheduler = require("../scheduler")
-local types = require("../reactive/types")
 
-local function interval<T>(func: types.Readable<T>, hz: number?)
-	local internal_node = graph.create_source_node(func())
+local function interval<T>(func: (dt: number) -> T, hz: number?)
+	local scope = graph.assert_stable_parent()
+
+	local node = graph.create_source_node(func(0))
 	local last_eval = 0
 
-	scheduler.on_render(function()
-		if os.clock() - last_eval <= 1 / (hz or 60) then
-			return
+	local function on_render(dt: number)
+		if hz ~= nil then
+			last_eval += dt
+			if last_eval <= 1 / hz then
+				return
+			end
+			dt = last_eval
+			last_eval = 0
 		end
 
-		graph.update_source_node(internal_node, func())
-		last_eval = os.clock()
-	end)
+		graph.update_source_node(node, func(dt))
+	end
+
+	local disconnect = scheduler.on_render(on_render)
+
+	graph.push_cleanup(scope, disconnect)
 
 	return function()
-		graph.push_dependency(internal_node)
-		return internal_node.cached_value
+		graph.push_dependency(node)
+		return node.cached_value
 	end
 end
 

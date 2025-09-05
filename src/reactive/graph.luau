@@ -27,8 +27,6 @@ export type StableNode<T> = {
 
 	-- Cleanup functions run when the node dies
 	read cleanups: { () -> () },
-
-	read delay_destroy: number?,
 }
 
 export type ReactiveNode<T> = {
@@ -37,7 +35,7 @@ export type ReactiveNode<T> = {
 	read children: { Node<T> },
 
 	--- Describes the effect to run to compute the result of this node.
-	read effect: types.Effect<T>,
+	effect: types.Effect<T>,
 	-- async is similar to eager, but unlike eager does not actually update the
 	-- value. this is necessary to support a proper async reactive primitive
 	read evaluation: "eager" | "deferred" | "lazy" | "dead" | "async",
@@ -77,16 +75,16 @@ local function set_scope(node: Node<any>?)
 	processing_node[coroutine.running()] = node
 end
 
-local function run_as_unsafe<T, U...>(
+local function run_as_unsafe<T..., U...>(
 	owner: Node<any>?,
-	fn: (U...) -> T,
+	fn: (U...) -> T...,
 	...: U...
-): result.Identity<T, unknown>
+): T...
 	local previous_processing = get_scope()
 	set_scope(owner)
-	local call = fn(...)
+	local a, b = fn(...)
 	set_scope(previous_processing)
-	return call
+	return a, b
 end
 
 local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): result.Identity<T, unknown>
@@ -310,7 +308,7 @@ local function invalidate_loop<T>(node: SourceNode<T> | ReactiveNode<T>)
 	end
 end
 
-local function invalidate<T>(node: SourceNode<T>)
+local function invalidate<T>(node: ReactiveNode<T> | SourceNode<T>)
 	invalidate_loop(node)
 
 	for _, node in pending_eval do
@@ -355,7 +353,7 @@ end
 
 function graph.create_reactive_node<T>(
 	parent: StableNode<T> | false,
-	effect: types.Effect<T>,
+	effect: types.Effect<T> | false,
 	evaluation: "eager" | "deferred" | "lazy" | "async",
 	cached_value: T
 ): ReactiveNode<T>
@@ -385,7 +383,7 @@ function graph.create_reactive_node<T>(
 	return node
 end
 
-function graph.create_stable_node<T>(parent: Node<T> | false, delay_destroy: number?)
+function graph.create_stable_node<T>(parent: Node<T> | false)
 	local node: StableNode<T> = {
 		parent = parent,
 
@@ -397,8 +395,6 @@ function graph.create_stable_node<T>(parent: Node<T> | false, delay_destroy: num
 
 		children = {},
 		cleanups = {},
-
-		delay_destroy = delay_destroy,
 	}
 
 	if parent then

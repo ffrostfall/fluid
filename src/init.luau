@@ -27,6 +27,8 @@ local switch = require("@self/utils/switch")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+local show_delay = require("@self/utils/show_delay")
+local switch_delay = require("@self/utils/switch_delay")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -86,6 +88,8 @@ fluid.for_values = for_values
 fluid.read = read
 fluid.show = show
 fluid.switch = switch
+fluid.show_delay = show_delay
+fluid.switch_delay = switch_delay
 
 -- Animation
 fluid.lerp = lerp.create

@@ -4,7 +4,7 @@ local types = require("../reactive/types")
 local untrack = require("../reactive/untrack")
 
 local function switch<T, U>(condition: () -> T)
-	return function(options: { [T]: types.UsedAs<U> }): U?
+	return function(options: { [T]: types.UsedAs<U> }): () -> U?
 		return derive(function()
 			local value = condition()
 

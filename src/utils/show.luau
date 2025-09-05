@@ -23,8 +23,10 @@ local function show<T, U>(
 	end)
 end
 
-return show :: (<T>(condition: () -> any, truthy: types.UsedAs<T>) -> T?) & <T, U>(
-	condition: () -> any,
-	truthy: types.UsedAs<T>,
-	falsy: types.UsedAs<U>
-) -> T | U
+return show ::
+	& (<T>(condition: () -> any, truthy: types.UsedAs<T>) -> () -> T?)
+	& <T, U>(
+		condition: () -> any,
+		truthy: types.UsedAs<T>,
+		falsy: types.UsedAs<U>
+	) -> () -> T | U
