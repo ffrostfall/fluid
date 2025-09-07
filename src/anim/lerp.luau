@@ -1,4 +1,5 @@
 local graph = require("../reactive/graph")
+local oklab = require("../utils/oklab")
 local read = require("../utils/read")
 local types = require("../reactive/types")
 
@@ -16,7 +17,17 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	number = math.lerp,
 	Vector3 = vector_lerp,
 	Vector2 = general_lerp,
-	Color3 = Color3.new(0, 0, 0).Lerp,
+	Color3 = function(a: Color3, b: Color3, t: number)
+		local result_vector = oklab.to_srgb(
+			vector_lerp(
+				oklab.from_srgb(vector.create(a.R, a.G, a.B)),
+				oklab.from_srgb(vector.create(b.R, b.G, b.B)),
+				t
+			)
+		)
+
+		return Color3.new(result_vector.x, result_vector.y, result_vector.z)
+	end,
 	CFrame = CFrame.identity.Lerp,
 	Rect = function(a: Rect, b: Rect, t: number)
 		return Rect.new(
