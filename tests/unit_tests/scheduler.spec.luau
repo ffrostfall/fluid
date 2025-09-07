@@ -1,5 +1,4 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
-local flags = require("@src/flags")
 local fluid = require("@src/")
 local task = require("@lune/task")
 
@@ -76,11 +75,9 @@ TEST("schedular.delay()", function()
 		CASE("works")
 
 		local triggered = false
-		flags.dev_mode = true
 		scheduler.delay(1, function()
 			triggered = true
 		end)
-		flags.dev_mode = false
 
 		CHECK(triggered == false)
 		step_scheduler(0.995)

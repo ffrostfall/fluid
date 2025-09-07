@@ -1,6 +1,7 @@
 local colorful = require("./vendor/colorful")
-local flags = require("./flags")
 local task = (task or require("@lune/task")) :: typeof(task)
+
+local dev_mode = _G.__DEV__
 
 type RenderCallback = (delta_time: number) -> ()
 type WaitingThread =
@@ -64,7 +65,7 @@ function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
 	local thread = coroutine.create(fn)
 	local data: { [any]: any } = table.pack(...)
 	data.resume = step_tick + n
-	if flags.dev_mode then
+	if dev_mode then
 		data.trace = debug.traceback(nil, 2)
 	end
 	waiting_threads[thread] = data :: WaitingThread

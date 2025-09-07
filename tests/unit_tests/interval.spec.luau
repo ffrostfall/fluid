@@ -23,14 +23,6 @@ local function wrap_root(fn: () -> ())
 	end
 end
 
-local function wrap_devmode(fn: () -> ())
-	return function()
-		fluid.flags.dev_mode = true
-		fn()
-		fluid.flags.dev_mode = false
-	end
-end
-
 local function use_log_mode(fn: () -> ())
 	fn()
 	logging.on_warn(nil)
@@ -178,7 +170,7 @@ end)
 
 TEST(
 	"interval devmode mode",
-	wrap_devmode(wrap_root(function()
+	wrap_root(function()
 		do
 			CASE("error if callback yields with coroutine.yield()")
 
@@ -234,7 +226,7 @@ TEST(
 				CHECK(did_yield_count == 1)
 			end)
 		end
-	end))
+	end)
 )
 
 return nil

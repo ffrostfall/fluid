@@ -6,7 +6,6 @@ local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
 local derive = require("@self/reactive/derive")
 local effect = require("@self/reactive/effect")
-local flags = require("@self/flags")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
@@ -17,14 +16,14 @@ local read = require("@self/utils/read")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
 local show = require("@self/utils/show")
+local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
 local switch = require("@self/utils/switch")
+local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
-local show_delay = require("@self/utils/show_delay")
-local switch_delay = require("@self/utils/switch_delay")
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
@@ -101,8 +100,5 @@ fluid.provide_scheduler = function(): (delta_time: number) -> ()
 end
 
 fluid.__SCHEDULER_INTERFACE = scheduler
-
--- Flags
-fluid.flags = flags
 
 return fluid

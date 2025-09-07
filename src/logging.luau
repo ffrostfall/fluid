@@ -1,7 +1,8 @@
 --!optimize 1
 local colorful = require("./vendor/colorful")
-local flags = require("./flags")
 local scheduler = require("./scheduler")
+
+local dev_mode = _G.__DEV__
 
 type OnWarn = (text: string) -> ()
 
@@ -36,17 +37,17 @@ local logging = {}
 
 function logging.trace(text: string, traceback: boolean?)
 	if traceback == nil then
-		traceback = flags.dev_mode
+		traceback = dev_mode
 	end
 
-	if flags.dev_mode then
+	if dev_mode then
 		print(if traceback then use_traceback(text, false) else format(text, false))
 	end
 end
 
 function logging.warn(text: string, traceback: boolean?)
 	if traceback == nil then
-		traceback = flags.dev_mode
+		traceback = dev_mode
 	end
 
 	warn_facade(if traceback then use_traceback(text, false) else format(text, false))
@@ -61,7 +62,7 @@ function logging.warn_suppressed(text: string, traceback: boolean?)
 	warn_storage[text] = true
 
 	if traceback == nil then
-		traceback = flags.dev_mode
+		traceback = dev_mode
 	end
 
 	warn_facade(if traceback then use_traceback(text, true) else format(text, true))
