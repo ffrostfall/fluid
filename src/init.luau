@@ -1,3 +1,8 @@
+if _G.__DEV__ == nil then
+	-- thanks type state
+	_G.__DEV__ = (game and not game:GetService("RunService"):IsStudio()) :: any
+end
+
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
