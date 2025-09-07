@@ -11,7 +11,9 @@ local function get_argument_from<T>(...: T): (boolean, T)
 end
 
 local function source<T>(initial_value: T): types.Source<T>
+	graph.set_group(graph.new_group("source"))
 	local node = graph.create_source_node(initial_value)
+	graph.clear_group()
 
 	-- This uses varargs so we can tell the difference between f(), f(nil), and f(value)
 	return function(...: T): T

@@ -1,12 +1,17 @@
 local graph = require("../reactive/graph")
 local read = require("../utils/read")
-local types = require("../reactive/types")
 local scheduler = require("../scheduler")
+local types = require("../reactive/types")
 
 local function indexes<K, VI, VO>(
 	input: types.UsedAs<{ [K]: VI }>,
-	transform: (() -> VI, K, active: types.Readable<boolean>) -> (VO, number?)
+	transform: (
+		() -> VI,
+		K,
+		active: types.Readable<boolean>
+	) -> (VO, number?)
 ): () -> { VO }
+	graph.set_group(graph.new_group("for_keys"))
 	local parent = graph.assert_stable_parent()
 	local child_parent = graph.create_stable_node(parent)
 
@@ -113,6 +118,7 @@ local function indexes<K, VI, VO>(
 	end
 
 	reactive_node.effect = update
+	graph.clear_group()
 
 	return function()
 		local result = graph.evaluate_node(reactive_node)
