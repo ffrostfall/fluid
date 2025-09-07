@@ -1156,4 +1156,19 @@ TEST(
 	end)
 )
 
+TEST(
+	"groups",
+	wrap_root(function()
+		do
+			CASE("groups exist")
+			fluid.graph.set_group(fluid.graph.new_group("test"))
+
+			local node = fluid.graph.create_stable_node(false)
+			CHECK(fluid.graph.get_group(node) ~= nil)
+
+			fluid.graph.clear_group()
+		end
+	end)
+)
+
 return nil

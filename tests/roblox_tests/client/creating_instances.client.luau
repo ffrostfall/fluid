@@ -76,6 +76,8 @@ local function list()
 	local input = fluid.create("TextBox")({
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(0.25, 0.1),
+
+		fluid.changed("Text", print),
 	}) :: TextBox
 
 	return fluid.create("ScreenGui")({

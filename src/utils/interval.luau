@@ -7,6 +7,9 @@ local dev_mode = _G.__DEV__
 
 local function interval<T>(func: (dt: number) -> T, hz: number?)
 	local scope = graph.assert_stable_parent()
+
+	graph.set_group(graph.new_group("interval"))
+
 	local creation_trace = debug.traceback(nil, 2)
 
 	local inital_value
@@ -22,6 +25,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 
 	local node = graph.create_source_node(inital_value)
 	local last_eval = 0
+	graph.clear_group()
 
 	local function on_render(dt: number)
 		if hz ~= nil then

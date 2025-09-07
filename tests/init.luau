@@ -1,4 +1,7 @@
+--!nolint BuiltinGlobalWrite
+
 local process = require("@lune/process")
+local roblox = require("@lune/roblox")
 local _, _, _, FINISH = require("@vendor/testkit").test()
 
 local tests = {}
@@ -21,6 +24,12 @@ function tests.unit_tests()
 	if not ok then
 		process.exit(1)
 	end
+end
+
+do -- setting roblox globals
+	Color3 = roblox.Color3
+	CFrame = roblox.CFrame
+	UDim2 = roblox.UDim2
 end
 
 return tests

@@ -1,6 +1,7 @@
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
+local changed = require("@self/instances/changed")
 local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
@@ -24,6 +25,7 @@ local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
@@ -61,6 +63,7 @@ fluid.create = create
 fluid.mount = mount
 fluid.tags = tags
 fluid.bind = bind
+fluid.changed = changed
 
 -- actions
 fluid.action = action.create

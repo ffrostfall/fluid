@@ -52,12 +52,14 @@ local function get_property(inst: Instance, property: string): any
 end
 
 local function bind_property<T>(inst: Instance, property: string, value: types.Readable<T>)
+	graph.set_group(graph.new_group(`bind "{property}"`))
 	local property_node = graph.create_reactive_node(graph.assert_stable_parent(), function()
 		set_property(inst, property, value())
 		return nil
 	end, "deferred", nil)
 
 	graph.evaluate_node(property_node)
+	graph.clear_group()
 end
 
 local function bind_event(inst: Instance, event_name: string, func: <T...>(T...) -> ())
@@ -70,6 +72,7 @@ local function bind_event(inst: Instance, event_name: string, func: <T...>(T...)
 end
 
 local function bind_reactive_child(inst: Instance, func: () -> { Instance } | Instance)
+	graph.set_group(graph.new_group("children"))
 	local stable_node = graph.assert_stable_parent()
 
 	local property_node = graph.create_reactive_node(
@@ -108,6 +111,12 @@ local function bind_reactive_child(inst: Instance, func: () -> { Instance } | In
 				source_inst.Parent = inst
 			end
 
+			for old_inst in value do
+				if not table.find(source_result, old_inst) then
+					value[old_inst] = nil
+				end
+			end
+
 			return value
 		end,
 		"deferred",
@@ -115,6 +124,7 @@ local function bind_reactive_child(inst: Instance, func: () -> { Instance } | In
 	)
 
 	graph.evaluate_node(property_node)
+	graph.clear_group()
 end
 
 local function evaluate(
