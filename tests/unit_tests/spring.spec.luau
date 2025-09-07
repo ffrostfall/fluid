@@ -1,12 +1,8 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
-local task = require("@lune/task")
+local hooks = require("@tests/hooks")
 
-local provided_scheduler = fluid.provide_scheduler()
-
-local function step_scheduler(n: number?)
-	task.spawn(provided_scheduler, n or 1 / 60)
-end
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies

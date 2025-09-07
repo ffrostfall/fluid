@@ -1,4 +1,5 @@
 local logging = require("../logging")
+local no_yield = require("@src/utils/no_yield")
 local result = require("../result")
 local scheduler = require("../scheduler")
 local types = require("./types")
@@ -121,10 +122,25 @@ local function get_group(node: Node<unknown> | SourceNode<unknown>): NodeGroup?
 	return node_groups[node]
 end
 
+local function mark_scope<T..., U...>(fn: (U...) -> T..., owner: Node<any>?, ...: U...): T...
+	set_scope(owner)
+	return fn(...)
+end
+
 local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
 	local previous_processing = get_scope()
 	set_scope(owner)
-	local a, b = fn(...)
+
+	local no_yield_check = dev_mode
+		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+
+	local a, b
+	if no_yield_check then
+		a, b = no_yield(mark_scope, fn, owner, ...)
+	else
+		a, b = fn(...)
+	end
+
 	set_scope(previous_processing)
 	return a, b
 end
@@ -132,7 +148,14 @@ end
 local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): result.Identity<T, unknown>
 	local previous_processing = get_scope()
 	set_scope(owner)
-	local call = result.call(fn, ...)
+
+	local no_yield_check = dev_mode
+		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+
+	local call = if no_yield_check
+		then result.call(no_yield, mark_scope, fn, owner, ...)
+		else result.call(fn, ...)
+
 	set_scope(previous_processing)
 	return call
 end
@@ -284,7 +307,7 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 
 		return result.ok(node.cached_value)
 	else
-		logging.warn(`effect error: {call.err}`)
+		logging.warn(`effect error: {call.err}	`)
 		return result.fail(`effect error: {call.err}`, call.trace)
 	end
 end

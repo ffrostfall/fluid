@@ -1,16 +1,12 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local graph = require("../../src/reactive/graph")
-local task = require("@lune/task")
+local hooks = require("@tests/hooks")
 
 local WEAK_TABLE = { __mode = "kv" }
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
-local provided_scheduler = fluid.provide_scheduler()
-
-local function step_scheduler(n: number?)
-	task.spawn(provided_scheduler, n or 1 / 60)
-end
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
@@ -646,14 +642,24 @@ TEST(
 			local scope = graph.get_scope()
 
 			local input = source({ 1 })
+			local did_output_catch_me = false
+
+			hooks.logging.on_warn(function(err)
+				if string.find(err, "catch me") then
+					did_output_catch_me = true
+				end
+			end)
 
 			local ok = pcall(function()
-				for_keys(input, function()
-					error("")
-					return NIL
+				return for_keys(input, function()
+					error("catch me")
+					return nil
 				end)()
 			end)
 
+			hooks.logging.on_warn(nil)
+
+			CHECK(did_output_catch_me)
 			CHECK(not ok)
 			CHECK(scope == graph.get_scope())
 		end
@@ -886,18 +892,28 @@ TEST(
 			local n0 = graph.get_scope()
 			local input = source({ 1 })
 
+			local did_output_catch_me = false
+
+			hooks.logging.on_warn(function(err)
+				if string.find(err, "catch me") then
+					did_output_catch_me = true
+				end
+			end)
+
 			local ok = pcall(function()
 				for_values(input, function()
-					error("")
+					error("catch me")
 					return nil
 				end)()
 			end)
 
 			CHECK(not ok)
+			CHECK(did_output_catch_me == true)
 
 			local n1 = graph.get_scope()
 
 			CHECK(n0 == n1)
+			hooks.logging.on_warn(nil)
 		end
 
 		do
@@ -1167,6 +1183,26 @@ TEST(
 			CHECK(fluid.graph.get_group(node) ~= nil)
 
 			fluid.graph.clear_group()
+		end
+	end)
+)
+
+TEST(
+	"no yield in reactive scopes",
+	wrap_root(function()
+		do
+			CASE("works")
+
+			local did_yield = false
+			hooks.logging.on_warn(function(text)
+				did_yield = string.find(text, "thread yielded") ~= nil
+			end)
+
+			fluid.effect(function()
+				coroutine.yield()
+			end)
+
+			CHECK(did_yield == true)
 		end
 	end)
 )

@@ -1,24 +1,20 @@
-local result = require("../result")
+local logging = require("@src/logging")
 
-local function no_yield<O, I...>(callback: (I...) -> O, ...): result.Identity<O, unknown>
+local function no_yield<I..., O...>(callback: (I...) -> O..., ...: I...): (boolean, O...)
 	local co = coroutine.create(callback)
-	local ok, output = coroutine.resume(co, ...)
+	local output: { any } = { coroutine.resume(co, ...) }
+	local ok = table.remove(output, 1)
 
 	if not ok then
-		return result.fail(
-				"failed to resume a thread",
-				debug.traceback(nil, 2)
-			) :: result.Identity<O, unknown>
+		logging.warn(output[1])
+		error(`failed to run thread`, 2)
 	end
 
 	if coroutine.status(co) ~= "dead" then
-		return result.fail(
-				"thread yielded",
-				debug.traceback(nil, 2)
-			) :: result.Identity<O, unknown>
+		error("thread yielded", 2)
 	end
 
-	return result.ok(output)
+	return unpack(output)
 end
 
 return no_yield

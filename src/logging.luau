@@ -4,9 +4,6 @@ local scheduler = require("./scheduler")
 
 local dev_mode = _G.__DEV__
 
-type OnWarn = (text: string) -> ()
-
-local on_warn: OnWarn? = nil
 local warn_storage: { [string]: true } = {}
 
 local function format(text: string, is_supressed: boolean): string
@@ -21,19 +18,16 @@ local function use_traceback(text: string, is_supressed: boolean): string
 end
 
 local function warn_facade(text: string)
-	if on_warn then
-		return on_warn(text)
-	end
-
 	if warn then
 		warn(text)
 		return
 	end
-
 	print(colorful.color.yellowBright(text))
 end
 
-local logging = {}
+local logging = {
+	__warn_facade = warn_facade,
+}
 
 function logging.trace(text: string, traceback: boolean?)
 	if traceback == nil then
@@ -50,7 +44,7 @@ function logging.warn(text: string, traceback: boolean?)
 		traceback = dev_mode
 	end
 
-	warn_facade(if traceback then use_traceback(text, false) else format(text, false))
+	logging.__warn_facade(if traceback then use_traceback(text, false) else format(text, false))
 end
 
 -- blocks warns from overlapping in most notably that happen everyframe
@@ -65,16 +59,11 @@ function logging.warn_suppressed(text: string, traceback: boolean?)
 		traceback = dev_mode
 	end
 
-	warn_facade(if traceback then use_traceback(text, true) else format(text, true))
+	logging.__warn_facade(if traceback then use_traceback(text, true) else format(text, true))
 
 	scheduler.delay(10, function()
 		warn_storage[text] = nil
 	end)
-end
-
--- for tests
-function logging.on_warn(new_callback: OnWarn?)
-	on_warn = new_callback
 end
 
 return logging

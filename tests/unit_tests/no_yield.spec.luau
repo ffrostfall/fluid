@@ -10,6 +10,10 @@ local function yielding_2_function(): unknown
 	return task.wait() :: unknown
 end
 
+local function error_handler()
+	return "failed"
+end
+
 local function no_yieding_function()
 	local i = 0
 	for _ = 1, 600 do
@@ -20,24 +24,24 @@ end
 
 TEST("no_yield", function()
 	do
-		CASE("result.fail if it's yielding #coroutine.yield")
-		local r = no_yield(yielding_function)
+		CASE("fail if it's yielding #coroutine.yield")
+		local ok, result = xpcall(no_yield, error_handler, yielding_function)
 
-		CHECK(not r.success)
+		CHECK(ok == false and result == "failed")
 	end
 
 	do
-		CASE("result.fail if it's yielding #task.wait")
-		local r = no_yield(yielding_2_function)
+		CASE("fail if it's yielding #task.wait")
+		local ok, result = xpcall(no_yield, error_handler, yielding_2_function)
 
-		CHECK(not r.success)
+		CHECK(ok == false and result == "failed")
 	end
 
 	do
-		CASE("result.ok if it's not yielding")
-		local r = no_yield(no_yieding_function)
+		CASE("ok if it's not yielding")
+		local ok, result = xpcall(no_yield, error_handler, no_yieding_function)
 
-		CHECK(r.success)
+		CHECK(ok == true and result == 600)
 	end
 end)
 

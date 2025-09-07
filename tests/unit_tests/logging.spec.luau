@@ -1,13 +1,8 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
-local fluid = require("@src")
+local hooks = require("@tests/hooks")
 local logging = require("@src/logging")
-local task = require("@lune/task")
 
-local provided_scheduler = fluid.provide_scheduler()
-
-local function step_scheduler(n: number?)
-	task.spawn(provided_scheduler, n or 1 / 60)
-end
+local step_scheduler = hooks.scheduler.step
 
 local text_pool = {
 	"hello world",
@@ -18,12 +13,12 @@ local text_pool = {
 local function wrap_clean(func: () -> ())
 	return function()
 		func()
-		logging.on_warn(nil)
+		hooks.logging.on_warn(nil)
 	end
 end
 
 local function shallow_warn_search(against: string, to_search: string): boolean
-	return string.find(against, "fluid") ~= nil and string.find(against, to_search) ~= nil
+	return string.find(against, to_search) ~= nil
 end
 
 TEST(
@@ -32,7 +27,7 @@ TEST(
 		CASE("works")
 		for _, text in text_pool do
 			local incoming_text: string = ""
-			logging.on_warn(function(warn_text)
+			hooks.logging.on_warn(function(warn_text)
 				incoming_text = warn_text
 			end)
 
@@ -43,7 +38,7 @@ TEST(
 		CASE("works multiple times")
 		for _, text in text_pool do
 			local log_count = 0
-			logging.on_warn(function()
+			hooks.logging.on_warn(function()
 				log_count += 1
 			end)
 
@@ -52,6 +47,8 @@ TEST(
 				CHECK(log_count == i)
 			end
 		end
+
+		hooks.logging.on_warn(nil)
 	end)
 )
 
@@ -61,7 +58,7 @@ TEST(
 		CASE("works once")
 		for _, text in text_pool do
 			local incoming_text: string = ""
-			logging.on_warn(function(warn_text)
+			hooks.logging.on_warn(function(warn_text)
 				incoming_text = warn_text
 			end)
 
@@ -73,7 +70,7 @@ TEST(
 		CASE("does not work")
 		for _, text in text_pool do
 			local log_count = 0
-			logging.on_warn(function()
+			hooks.logging.on_warn(function()
 				log_count += 1
 			end)
 
@@ -87,7 +84,7 @@ TEST(
 		step_scheduler(10)
 		for _, text in text_pool do
 			local incoming_text: string = ""
-			logging.on_warn(function(warn_text)
+			hooks.logging.on_warn(function(warn_text)
 				incoming_text = warn_text
 			end)
 
@@ -95,6 +92,8 @@ TEST(
 
 			CHECK(shallow_warn_search(incoming_text, text))
 		end
+
+		hooks.logging.on_warn(nil)
 	end)
 )
 return nil

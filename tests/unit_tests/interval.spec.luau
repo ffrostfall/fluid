@@ -1,15 +1,11 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
-local logging = require("@src/logging")
+local hooks = require("@tests/hooks")
 local result = require("@src/result")
 local task = require("@lune/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
-local provided_scheduler = fluid.provide_scheduler()
-
-local function step_scheduler(n: number?)
-	task.spawn(provided_scheduler, n or 1 / 60)
-end
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
@@ -21,11 +17,6 @@ local function wrap_root(fn: () -> ())
 		end)
 		destroy()
 	end
-end
-
-local function use_log_mode(fn: () -> ())
-	fn()
-	logging.on_warn(nil)
 end
 
 --
@@ -201,30 +192,29 @@ TEST(
 			CASE("log warn when fluid.interval suddenly yields and does not spam output")
 
 			local did_yield_count = 0
-			use_log_mode(function()
-				logging.on_warn(function(text)
-					if string.find(text, "thread yielded") ~= nil then
-						did_yield_count += 1
-					end
-				end)
-
-				fluid.interval(function(dt)
-					if dt == 0 then
-						return 0
-					end
-					return coroutine.yield()
-				end)
-
-				CHECK(did_yield_count == 0)
-				step_scheduler(1)
-				CHECK(did_yield_count == 1)
-
-				for i = 1, 5 do
-					step_scheduler(i / 60)
+			hooks.logging.on_warn(function(text)
+				if string.find(text, "thread yielded") ~= nil then
+					did_yield_count += 1
 				end
-
-				CHECK(did_yield_count == 1)
 			end)
+
+			fluid.interval(function(dt)
+				if dt == 0 then
+					return 0
+				end
+				return coroutine.yield()
+			end)
+
+			CHECK(did_yield_count == 0)
+			step_scheduler(1)
+			CHECK(did_yield_count == 1)
+
+			for i = 1, 5 do
+				step_scheduler(i / 60)
+			end
+
+			CHECK(did_yield_count == 1)
+			hooks.logging.on_warn(nil)
 		end
 	end)
 )
