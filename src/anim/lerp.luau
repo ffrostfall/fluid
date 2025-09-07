@@ -33,6 +33,7 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 local lerp = {}
 
 function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
+	graph.set_group(graph.new_group("lerp"))
 	local output = graph.create_source_node(read(goal))
 
 	local function effect()
@@ -48,6 +49,7 @@ function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 	end
 
 	graph.create_reactive_node(graph.assert_stable_parent(), effect, "deferred")
+	graph.clear_group()
 
 	return function()
 		graph.push_dependency(output)

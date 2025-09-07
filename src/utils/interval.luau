@@ -4,8 +4,10 @@ local scheduler = require("../scheduler")
 local function interval<T>(func: (dt: number) -> T, hz: number?)
 	local scope = graph.assert_stable_parent()
 
+	graph.set_group(graph.new_group("interval"))
 	local node = graph.create_source_node(func(0))
 	local last_eval = 0
+	graph.clear_group()
 
 	local function on_render(dt: number)
 		if hz ~= nil then

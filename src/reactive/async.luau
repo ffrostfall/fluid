@@ -15,6 +15,7 @@ that async yields every single time.
 ]]
 
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
+	graph.set_group(graph.new_group("async"))
 	local reactive_node: graph.ReactiveNode<any>
 	local value: graph.ReactiveNode<T> = graph.create_reactive_node(
 		graph.assert_stable_parent(),
@@ -60,6 +61,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "deferred")
 
 	graph.evaluate_node(reactive_node)
+	graph.clear_group()
 
 	return function()
 		graph.evaluate_node(reactive_node)
