@@ -6,6 +6,7 @@ end
 local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
+local changed = require("@self/instances/changed")
 local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
@@ -21,14 +22,14 @@ local read = require("@self/utils/read")
 local root = require("@self/reactive/root")
 local scheduler = require("@self/scheduler")
 local show = require("@self/utils/show")
+local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
 local switch = require("@self/utils/switch")
+local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
-local show_delay = require("@self/utils/show_delay")
-local switch_delay = require("@self/utils/switch_delay")
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -67,6 +68,7 @@ fluid.create = create
 fluid.mount = mount
 fluid.tags = tags
 fluid.bind = bind
+fluid.changed = changed
 
 -- actions
 fluid.action = action.create
