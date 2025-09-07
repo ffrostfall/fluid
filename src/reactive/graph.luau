@@ -92,7 +92,7 @@ local function set_scope(node: Node<any>?)
 end
 
 local function new_group(name: string): NodeGroup
-	if dev_mode then
+	if not dev_mode then
 		return nil :: any
 	end
 
@@ -102,7 +102,7 @@ local function new_group(name: string): NodeGroup
 end
 
 local function set_group(group: NodeGroup)
-	if dev_mode then
+	if not dev_mode then
 		return
 	end
 
@@ -110,7 +110,7 @@ local function set_group(group: NodeGroup)
 end
 
 local function clear_group()
-	if dev_mode then
+	if not dev_mode then
 		return
 	end
 
