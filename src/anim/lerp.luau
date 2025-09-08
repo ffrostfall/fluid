@@ -17,14 +17,14 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	number = math.lerp,
 	Vector3 = vector_lerp,
 	Vector2 = general_lerp,
-	Color3 = Color3.new(0, 0, 0).Lerp,
-	CFrame = function(a: Color3, b: Color3, t)
+	Color3 = function(a: Color3, b: Color3, t)
 		local initial_vector = oklab.from_srgb(vector.create(a.R, a.G, a.B))
 		local goal_vector = oklab.from_srgb(vector.create(b.R, b.G, b.B))
 		local interpolated_vector = vector_lerp(initial_vector, goal_vector, t)
 		local result_vector = oklab.to_srgb(interpolated_vector)
 		return Color3.new(result_vector.x, result_vector.y, result_vector.z)
 	end,
+	CFrame = CFrame.identity.Lerp,
 	Rect = function(a: Rect, b: Rect, t: number)
 		return Rect.new(
 			general_lerp(a.Min, b.Min, t) :: Vector2,
