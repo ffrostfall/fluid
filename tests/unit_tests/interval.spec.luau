@@ -19,8 +19,6 @@ local function wrap_root(fn: () -> ())
 	end
 end
 
---
-
 TEST("interval", function()
 	do
 		CASE("go active")
@@ -171,7 +169,7 @@ TEST(
 
 			CHECK(interval_result.success == false)
 			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "thread yielded") ~= nil)
+				CHECK(string.find(interval_result.err :: string, "attempted to yield") ~= nil)
 			end
 		end
 
@@ -184,7 +182,24 @@ TEST(
 
 			CHECK(interval_result.success == false)
 			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "thread yielded") ~= nil)
+				CHECK(string.find(interval_result.err :: string, "attempted to yield") ~= nil)
+			end
+		end
+
+		do
+			CASE("catch user error")
+
+			local interval_result = result.call(fluid.interval, function(dt)
+				error("hello world")
+			end)
+
+			CHECK(interval_result.success == false)
+			if not interval_result.success then
+				-- stylua: ignore
+				CHECK(
+					string.find(interval_result.err :: string, "attempted to yield") == nil 
+						and string.find(interval_result.err :: string, "hello world") ~= nil 
+				)
 			end
 		end
 
@@ -193,7 +208,7 @@ TEST(
 
 			local did_yield_count = 0
 			hooks.logging.on_warn(function(text)
-				if string.find(text, "thread yielded") ~= nil then
+				if string.find(text, "attempted to yield") ~= nil then
 					did_yield_count += 1
 				end
 			end)

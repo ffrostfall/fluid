@@ -122,11 +122,6 @@ local function get_group(node: Node<unknown> | SourceNode<unknown>): NodeGroup?
 	return node_groups[node]
 end
 
-local function mark_scope<T..., U...>(fn: (U...) -> T..., owner: Node<any>?, ...: U...): T...
-	set_scope(owner)
-	return fn(...)
-end
-
 local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
 	local previous_processing = get_scope()
 	set_scope(owner)
@@ -136,7 +131,14 @@ local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., 
 
 	local a, b
 	if no_yield_check then
-		a, b = no_yield(mark_scope, fn, owner, ...)
+		-- let us catch this, format and then throw
+		local ok, r1, r2 = xpcall(no_yield.check, no_yield.error_handler, fn, ...)
+
+		if not ok then
+			error(`{r1.message}\n{r1.trace}`)
+		end
+
+		a, b = r1, r2
 	else
 		a, b = fn(...)
 	end
@@ -152,11 +154,17 @@ local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): r
 	local no_yield_check = dev_mode
 		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
 
-	local call = if no_yield_check
-		then result.call(no_yield, mark_scope, fn, owner, ...)
-		else result.call(fn, ...)
+	local call: result.Identity<T, unknown>
+	if no_yield_check then
+		local ok, r1 = xpcall(no_yield.check, no_yield.error_handler, fn, ...)
+
+		call = if ok then result.ok(r1) else result.fail(r1.message, r1.trace)
+	else
+		call = result.call(fn, ...)
+	end
 
 	set_scope(previous_processing)
+
 	return call
 end
 

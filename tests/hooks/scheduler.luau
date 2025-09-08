@@ -1,5 +1,6 @@
 --[[
 	hooks wait/delay in fluid
+	this allows you to timeskip forward in tests
 ]]
 local fluid = require("@src")
 local logging = require("@src/logging")
@@ -16,8 +17,7 @@ type WaitingThread =
 	& { [any]: any }
 	& { any }
 
---
-
+-- scheduler.wait and scheduler.delay is overwritten to allow timeskip
 function scheduler_interface.wait(time: number?): number
 	waiting_threads[coroutine.running()] =
 		{ resume = step_tick + (time or 0), start = step_tick } :: WaitingThread
@@ -34,8 +34,6 @@ function scheduler_interface.delay<T...>(n: number, fn: (T...) -> (), ...: T...)
 
 	return thread
 end
-
---
 
 local function step_threads(delta_time: number)
 	step_tick += delta_time
@@ -61,6 +59,18 @@ local function step_threads(delta_time: number)
 	end
 end
 
+--[[
+	@example
+	```lua
+	local async = fluid.async(function(set)
+		scheduler.wait(1)
+		return "HTTP/2"
+	end)
+
+	hooks.scheduler.step(1) -- immediately fast forward by 1 second
+	CHECK(async() == "HTTP/2")
+	```
+]]
 local function step(delta_time: number?)
 	local dt = delta_time or 1 / 60
 	task.spawn(step_threads, dt)

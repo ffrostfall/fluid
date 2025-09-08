@@ -10,9 +10,17 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 
 	graph.set_group(graph.new_group("interval"))
 
-	local creation_trace = if dev_mode then debug.traceback(nil, 2) else "stack trace not defiend"
-	local initial_value = if dev_mode then no_yield(func, 0) else func(0)
+	local initial_value
+	if dev_mode then
+		-- throw immediately, lets just format the error
+		local ok, r = xpcall(no_yield.check, no_yield.error_handler, func, 0)
 
+		if not ok then
+			error(`{r.message}\n{r.trace}`)
+		end
+	else
+		initial_value = func(0)
+	end
 	local node = graph.create_source_node(initial_value)
 	local last_eval = 0
 
@@ -32,15 +40,14 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 		if not dev_mode then
 			new_value = func(dt)
 		else
-			local ok, result = xpcall(no_yield, function(err)
-				return logging.warn_suppressed(`interval error: {err} trace: {creation_trace}`)
-			end, func, dt)
+			local ok, err = xpcall(no_yield.check, no_yield.error_handler, func, dt)
 
 			if not ok then
+				logging.warn_suppressed(`{err.message}\n{err.trace}`)
 				return
 			end
 
-			new_value = result
+			new_value = err
 		end
 
 		graph.update_source_node(node, new_value)
