@@ -1,5 +1,5 @@
 local logging = require("../logging")
-local no_yield = require("@src/utils/no_yield")
+local no_yield = require("../utils/no_yield")
 local result = require("../result")
 local scheduler = require("../scheduler")
 local types = require("./types")

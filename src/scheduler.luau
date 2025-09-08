@@ -23,7 +23,7 @@ function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
 end
 
 function scheduler.wait<T...>(time: number?): number
-	return task.wait()
+	return task.wait(time)
 end
 
 function scheduler.cancel(thread: thread)

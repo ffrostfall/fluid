@@ -3,7 +3,7 @@ local logging = require("../logging")
 local no_yield = require("./no_yield")
 local scheduler = require("../scheduler")
 
-local dev_mode = _G.__DEV__
+local dev_mode = _G.__DEV__ == true
 
 local function interval<T>(func: (dt: number) -> T, hz: number?)
 	local scope = graph.assert_stable_parent()
