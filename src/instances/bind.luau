@@ -114,6 +114,7 @@ local function bind_reactive_child(inst: Instance, func: () -> { Instance } | In
 			for old_inst in value do
 				if not table.find(source_result, old_inst) then
 					value[old_inst] = nil
+					old_inst:Destroy()
 				end
 			end
 

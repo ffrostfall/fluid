@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- Fix reactive children not being cleaned up by @stenimated in #37
 - Fix deferred nodes, now deferring using `task.defer`
 - Fix spring sleeping and spring types by @stenimated in #24
 - Fix `interval` cleanup by @stenimated in #25
