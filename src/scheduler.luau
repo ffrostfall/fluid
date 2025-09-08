@@ -18,8 +18,12 @@ function scheduler.defer<T...>(fn: (T...) -> (), ...: T...)
 	return task.defer(fn, ...)
 end
 
-function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...)
+function scheduler.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
 	return task.delay(n, fn, ...)
+end
+
+function scheduler.wait<T...>(time: number?): number
+	return task.wait(time)
 end
 
 function scheduler.cancel(thread: thread)

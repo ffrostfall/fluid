@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add no_yield check in developer mode to `interval` and reactive scopes besides `async` by @stenimated in #29
 - Internally group nodes in developer mode for better inspection by @alicesaidhi in #32
 - Add `fluid.changed` for detecting changes by @alicesaidhi in #33
 - Add `fluid.show_delay` and `fluid.switch_delay` by @alicesaidhi in #27.
