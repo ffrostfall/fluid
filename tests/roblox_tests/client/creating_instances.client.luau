@@ -129,13 +129,19 @@ local function list()
 				local lerped = fluid.lerp(color, 0.1)
 				color(Color3.new(1, 0, 0))
 
-				return fluid.create("TextLabel")({
-					Size = UDim2.fromOffset(125, 50),
-					BackgroundColor3 = lerped,
+				return fluid.show(function()
+					return true
+				end, function()
+					return {
+						fluid.create("TextLabel")({
+							Size = UDim2.fromOffset(125, 50),
+							BackgroundColor3 = lerped,
 
-					Name = key,
-					Text = value,
-				})
+							Name = key,
+							Text = value,
+						}),
+					}
+				end)
 			end),
 		}),
 	})

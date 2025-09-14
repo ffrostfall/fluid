@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `fluid.show_delay` and `fluid.switch_delay` by @alicesaidhi in #27.
 - Add support for delaying destruction for `fluid.for_values` and `fluid.for_keys` on a per value level by @alicesaidhi in #27.
 - Add delta time to `interval` callback @stenimated in #24
+- Make reactive children effects recursive
 
 ### Changed
 

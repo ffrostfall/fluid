@@ -1,6 +1,7 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
 local types = require("../reactive/types")
+local untrack = require("../reactive/untrack")
 
 type PropertyPair<T> = {
 	tag: "property",
@@ -71,58 +72,87 @@ local function bind_event(inst: Instance, event_name: string, func: <T...>(T...)
 	end)
 end
 
-local function bind_reactive_child(inst: Instance, func: () -> { Instance } | Instance)
+type Result = Instance | { Result } | () -> Result
+
+local function reactive_child_effect(
+	inst: Instance,
+	func: () -> Result,
+	sets: {
+		new: { [Instance]: true },
+		current: { [Instance]: true },
+	}
+)
+	local new_child_set = sets.new
+	local current_child_set = sets.current
+	local source_result = func()
+
+	if not source_result then
+		for old_inst in new_child_set do
+			old_inst:Destroy()
+		end
+
+		return sets
+	end
+
+	local function process_child(child: Result)
+		if typeof(child) == "Instance" then
+			new_child_set[child] = true
+
+			if current_child_set[child] then
+				current_child_set[child] = nil
+				return
+			end
+
+			child.Parent = inst
+			return
+		end
+
+		if typeof(child) == "function" then
+			local children: { new: { [Instance]: true }, current: { [Instance]: true } } =
+				{ new = {}, current = {} }
+
+			graph.create_reactive_node(graph.get_scope() :: any, function(value)
+				return reactive_child_effect(inst, child, value)
+			end, "deferred", children)
+
+			graph.push_cleanup(graph.get_scope(), function()
+				for child in children.current do
+					child.Parent = nil
+				end
+			end)
+
+			return
+		end
+
+		for _, child in child do
+			process_child(child)
+		end
+
+		return
+	end
+
+	process_child(source_result)
+
+	for child in current_child_set do
+		child.Parent = nil
+	end
+
+	table.clear(current_child_set)
+	sets.current, sets.new = new_child_set, current_child_set
+
+	return sets
+end
+
+local function bind_reactive_child(inst: Instance, func: () -> Result)
 	graph.set_group(graph.new_group("children"))
-	local stable_node = graph.assert_stable_parent()
+	local stable_node = graph.get_scope() :: graph.StableNode<unknown>
 
-	local property_node = graph.create_reactive_node(
-		stable_node,
-		function(value: { [Instance]: true })
-			local source_result = func()
+	local children: { new: { [Instance]: true }, current: { [Instance]: true } } =
+		{ new = {}, current = {} }
 
-			if not source_result then
-				for old_inst in value do
-					old_inst:Destroy()
-				end
-
-				return value
-			end
-
-			if typeof(source_result) == "Instance" then
-				if value[source_result] then
-					return value
-				end
-
-				for old_inst in value do
-					old_inst:Destroy()
-				end
-
-				source_result.Parent = inst
-				value[source_result] = true
-				return value
-			end
-
-			for _, source_inst in source_result do
-				if value[source_inst] then
-					continue
-				end
-
-				value[source_inst] = true
-				source_inst.Parent = inst
-			end
-
-			for old_inst in value do
-				if not table.find(source_result, old_inst) then
-					value[old_inst] = nil
-					old_inst.Parent = nil
-				end
-			end
-
-			return value
-		end,
-		"deferred",
-		{}
-	)
+	local property_node = graph.create_reactive_node(stable_node :: any, function(value)
+		return reactive_child_effect(inst, func, value)
+	end, "deferred", children)
 
 	graph.evaluate_node(property_node)
 	graph.clear_group()
