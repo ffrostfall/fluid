@@ -2,7 +2,10 @@ local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local bind = require("@src/instances/bind")
 local fluid = require("@src/")
 local graph = require("@src/reactive/graph")
-local task = require("@lune/task")
+local hooks = require("@tests/hooks")
+
+local scheduler = fluid.__SCHEDULER_INTERFACE
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
@@ -19,30 +22,34 @@ end
 TEST(
 	"async bindings",
 	wrap_root(function()
+		CASE("works")
 		local text = fluid.source("hi")
 
-		local mock_inst = {
+		local mock_inst: { derivedvalue: number? } = {
 			derivedvalue = 0,
 		}
 
 		bind(mock_inst :: any, {
 			derivedvalue = fluid.async(function(set)
-				task.wait(0.02)
+				scheduler.wait(1)
 				return #text()
 			end),
 		})
 
-		task.wait(0.05)
-
 		graph.flush_deferred_nodes()
+		step_scheduler(0.5)
+		CHECK(mock_inst.derivedvalue == nil)
+
+		step_scheduler(0.5)
 		CHECK(mock_inst.derivedvalue == 2)
 
 		text("one")
 		graph.flush_deferred_nodes()
 
-		task.wait(0.05)
+		step_scheduler(0.5)
+		CHECK(mock_inst.derivedvalue == 2)
+		step_scheduler(0.5)
 
-		graph.flush_deferred_nodes()
 		CHECK(mock_inst.derivedvalue == 3)
 	end)
 )

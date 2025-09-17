@@ -1,4 +1,5 @@
 local logging = require("../logging")
+local no_yield = require("../utils/no_yield")
 local result = require("../result")
 local scheduler = require("../scheduler")
 local types = require("./types")
@@ -124,7 +125,24 @@ end
 local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
 	local previous_processing = get_scope()
 	set_scope(owner)
-	local a, b = fn(...)
+
+	local no_yield_check = dev_mode
+		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+
+	local a, b
+	if no_yield_check then
+		-- let us catch this, format and then throw
+		local ok, r1, r2 = xpcall(no_yield.check, no_yield.error_handler, fn, ...)
+
+		if not ok then
+			error(`{r1.message}\n{r1.trace}`)
+		end
+
+		a, b = r1, r2
+	else
+		a, b = fn(...)
+	end
+
 	set_scope(previous_processing)
 	return a, b
 end
@@ -132,8 +150,21 @@ end
 local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): result.Identity<T, unknown>
 	local previous_processing = get_scope()
 	set_scope(owner)
-	local call = result.call(fn, ...)
+
+	local no_yield_check = dev_mode
+		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+
+	local call: result.Identity<T, unknown>
+	if no_yield_check then
+		local ok, r1 = xpcall(no_yield.check, no_yield.error_handler, fn, ...)
+
+		call = if ok then result.ok(r1) else result.fail(r1.message, r1.trace)
+	else
+		call = result.call(fn, ...)
+	end
+
 	set_scope(previous_processing)
+
 	return call
 end
 

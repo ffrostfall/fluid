@@ -1,9 +1,12 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local graph = require("../../src/reactive/graph")
-local task = require("@lune/task")
+local hooks = require("@tests/hooks")
 
 local WEAK_TABLE = { __mode = "kv" }
+
+local scheduler = fluid.__SCHEDULER_INTERFACE
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
@@ -476,21 +479,26 @@ TEST(
 			local text = fluid.source("h")
 
 			local value = fluid.async(function(set)
-				task.wait(0.1)
+				scheduler.wait(1)
 
 				return #text()
 			end)
 
-			local size_value = 0
+			local size_value: number? = 0
 			fluid.effect(function()
 				size_value = value()
 			end)
 
 			text("hi")
-			task.wait(0.3)
+			step_scheduler(0.5)
+			CHECK(size_value == nil)
+			step_scheduler(0.5)
 			CHECK(size_value == 2)
 			text("what")
-			task.wait(0.3)
+
+			step_scheduler(0.5)
+			CHECK(size_value == 2)
+			step_scheduler(0.5)
 			CHECK(size_value == 4)
 		end
 	end)
@@ -634,14 +642,24 @@ TEST(
 			local scope = graph.get_scope()
 
 			local input = source({ 1 })
+			local did_output_catch_me = false
+
+			hooks.logging.on_warn(function(err)
+				if string.find(err, "catch me") then
+					did_output_catch_me = true
+				end
+			end)
 
 			local ok = pcall(function()
-				for_keys(input, function()
-					error("")
-					return NIL
+				return for_keys(input, function()
+					error("catch me")
+					return nil
 				end)()
 			end)
 
+			hooks.logging.on_warn(nil)
+
+			CHECK(did_output_catch_me)
 			CHECK(not ok)
 			CHECK(scope == graph.get_scope())
 		end
@@ -696,8 +714,7 @@ TEST(
 			CHECK(#data() == 1)
 			items({})
 			CHECK(#data() == 1)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#data() == 0)
 		end
 
@@ -715,14 +732,16 @@ TEST(
 			items({})
 			CHECK(#data() == 1)
 			CHECK(updates == 1)
-			task.wait()
+			step_scheduler()
 			items({ 1 }) -- should cancel thread
 			-- we need to evaluate for_keys again so it can cancel the thread.
 			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
-			CHECK(#data() == 1)
-			task.wait()
-			CHECK(#data() == 1)
+
 			CHECK(updates == 1)
+			CHECK(#data() == 1)
+			step_scheduler()
+			CHECK(#data() == 1)
+			CHECK(updates == 2)
 		end
 	end)
 )
@@ -873,18 +892,28 @@ TEST(
 			local n0 = graph.get_scope()
 			local input = source({ 1 })
 
+			local did_output_catch_me = false
+
+			hooks.logging.on_warn(function(err)
+				if string.find(err, "catch me") then
+					did_output_catch_me = true
+				end
+			end)
+
 			local ok = pcall(function()
 				for_values(input, function()
-					error("")
+					error("catch me")
 					return nil
 				end)()
 			end)
 
 			CHECK(not ok)
+			CHECK(did_output_catch_me == true)
 
 			local n1 = graph.get_scope()
 
 			CHECK(n0 == n1)
+			hooks.logging.on_warn(nil)
 		end
 
 		do
@@ -898,8 +927,7 @@ TEST(
 			CHECK(#data() == 1)
 			items({})
 			CHECK(#data() == 1)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#data() == 0)
 		end
 
@@ -917,14 +945,15 @@ TEST(
 			items({})
 			CHECK(#data() == 1)
 			CHECK(updates == 1)
-			task.wait()
+			step_scheduler()
 			items({ 1 }) -- should cancel thread
 			-- we need to evaluate for_keys again so it can cancel the thread.
 			-- otherwise it'll get rid of the node anyways. this shouldn't be too problematic though.
-			CHECK(#data() == 1)
-			task.wait()
-			CHECK(#data() == 1)
 			CHECK(updates == 1)
+			CHECK(#data() == 1)
+			step_scheduler()
+			CHECK(#data() == 1)
+			CHECK(updates == 2)
 		end
 	end)
 )
@@ -989,8 +1018,7 @@ TEST(
 			CHECK(#node() == 1)
 			condition_source(false)
 			CHECK(#node() == 2)
-			task.wait()
-			task.wait()
+			step_scheduler()
 			CHECK(#node() == 1)
 		end
 		do
@@ -1010,9 +1038,9 @@ TEST(
 			CHECK(#node() == 1)
 			condition_source(false)
 			CHECK(#node() == 2)
-			task.wait()
+			step_scheduler()
 			condition_source(true)
-			task.wait()
+			step_scheduler()
 			CHECK(#node() == 2)
 			CHECK(updates == 1)
 		end
@@ -1104,8 +1132,8 @@ TEST(
 			CHECK(#node() == 3)
 			condition_source(4)
 			CHECK(#node() == 3)
-			task.wait()
-			task.wait()
+			step_scheduler()
+			step_scheduler()
 			CHECK(#node() == 0)
 		end
 
@@ -1135,9 +1163,9 @@ TEST(
 			CHECK(#node() == 3)
 			condition_source(4)
 			CHECK(#node() == 3)
-			task.wait()
+			step_scheduler()
 			condition_source(2)
-			task.wait()
+			step_scheduler()
 			CHECK(instantiations == 1)
 			CHECK(#node() == 1)
 		end
@@ -1155,6 +1183,26 @@ TEST(
 			CHECK(fluid.graph.get_group(node) ~= nil)
 
 			fluid.graph.clear_group()
+		end
+	end)
+)
+
+TEST(
+	"no yield in reactive scopes",
+	wrap_root(function()
+		do
+			CASE("works")
+
+			local did_yield = false
+			hooks.logging.on_warn(function(text)
+				did_yield = string.find(text, "attempted to yield in a callback") ~= nil
+			end)
+
+			fluid.effect(function()
+				coroutine.yield()
+			end)
+
+			CHECK(did_yield == true)
 		end
 	end)
 )

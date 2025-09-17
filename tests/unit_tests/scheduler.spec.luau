@@ -1,20 +1,10 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
-local signal = require("@vendor/signal")
+local hooks = require("@tests/hooks")
 local task = require("@lune/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
-local render_event: signal.Identity<number> = signal()
-
-local step_fluid = fluid.provide_scheduler()
-
-task.spawn(function()
-	while true do
-		step_fluid(render_event:wait())
-	end
-
-	return error("unreachable")
-end)
+local step_scheduler = hooks.scheduler.step
 
 --[=[
 	Sandboxes the reactive graph root so we don't need to worry about side effects with implicit dependencies
@@ -41,7 +31,7 @@ TEST("scheduler stepping", function()
 
 		CHECK(scheduler.connections[1] == on_render_callback)
 		CHECK(counted_seconds == 0)
-		render_event:fire(1)
+		step_scheduler(1)
 
 		CHECK(counted_seconds == 1)
 
@@ -49,7 +39,7 @@ TEST("scheduler stepping", function()
 
 		disconnect()
 		CHECK(scheduler.connections[1] == nil)
-		render_event:fire(1)
+		step_scheduler(1)
 		CHECK(counted_seconds == 1)
 	end
 end)
@@ -71,218 +61,105 @@ TEST(
 				return counted_seconds
 			end)
 
-			render_event:fire(1)
+			step_scheduler(1)
 			CHECK(value() == 1)
 		end
 	end)
 )
 
-TEST(
-	"spring",
-	wrap_root(function()
-		for _, test in
-			{
-				{ 5, 15, 5, -5, -60, 60, 20 },
-				{
-					vector.create(5, 10),
-					vector.create(10, 5),
-					vector.create(-5, -10),
-					vector.create(1, 7),
-					vector.create(0, 0),
-					vector.create(10, 10),
-				},
-			}
-		do
-			local spring_target = fluid.source(test[1])
-			local spring, controls = fluid.spring(spring_target, 10, 1)
-			local data_type = type(test[1])
+TEST("schedular.delay()", function()
+	do
+		CASE("works")
 
-			local function rng_self_type(): vector | number
-				if data_type == "vector" then
-					return vector.create(math.random(), math.random(), math.random())
-				end
-				return math.random()
+		local triggered = false
+		scheduler.delay(1, function()
+			triggered = true
+		end)
+
+		CHECK(triggered == false)
+		step_scheduler(0.995)
+		CHECK(triggered == false)
+		step_scheduler(0.005)
+
+		CHECK(triggered == true)
+	end
+
+	do
+		CASE("schedular.delay() is always resumped next step")
+
+		local triggered = false
+		scheduler.delay(0, function()
+			triggered = true
+		end)
+
+		CHECK(triggered == false)
+		step_scheduler()
+		CHECK(triggered == true)
+	end
+
+	do
+		CASE("schedular.delay() is cancelable")
+
+		local triggered = false
+		local thread = scheduler.delay(0, function()
+			triggered = true
+		end)
+
+		CHECK(triggered == false)
+
+		scheduler.cancel(thread)
+
+		step_scheduler(1)
+		step_scheduler(2)
+		step_scheduler(3)
+
+		CHECK(triggered == false)
+	end
+end)
+
+TEST("schedular.wait()", function()
+	do
+		CASE("works")
+
+		for _, wait_time in { 0, 0.05, 0.5, 1, 2 } do
+			local ran = false
+			task.spawn(function()
+				scheduler.wait(wait_time)
+				ran = true
+			end)
+
+			CHECK(ran == false)
+
+			if wait_time <= 0 then
+				step_scheduler()
+			else
+				step_scheduler()
+				CHECK(ran == false)
+				step_scheduler(wait_time)
 			end
 
-			for i = 2, #test do
-				local target = test[i]
-
-				CASE(`spring [{test[i - 1]}] to [{target}]`)
-				spring_target(target)
-				render_event:fire(1 / 60)
-				CHECK(spring() ~= target)
-				render_event:fire(100)
-				CHECK(spring() == target)
-
-				CASE(`spring position`)
-				controls({
-					position = rng_self_type() * 10,
-				})
-				render_event:fire(1 / 60)
-				CHECK(spring() ~= target)
-				render_event:fire(3)
-				CHECK(spring() == target)
-
-				CASE(`spring velocity [self-type]`)
-				controls({
-					velocity = rng_self_type() * 10,
-				})
-				render_event:fire(1 / 60)
-				CHECK(spring() ~= target)
-				render_event:fire(3)
-				CHECK(spring() == target)
-
-				CASE(`spring impulse [self-type]`)
-				controls({
-					impulse = rng_self_type() * 10,
-				})
-
-				render_event:fire(1 / 60)
-				CHECK(spring() ~= target)
-				render_event:fire(3)
-				CHECK(spring() == target)
-			end
+			CHECK(ran == true)
 		end
-	end)
-)
-
-TEST("interval", function()
-	do
-		CASE("go active")
-
-		local interval_run_time = 0
-		local destroy = fluid.root(function()
-			fluid.interval(function(dt)
-				CHECK(dt == 0)
-				interval_run_time += 1
-				return 1
-			end)
-		end)
-
-		CHECK(interval_run_time == 1)
-		render_event:fire(0)
-		CHECK(interval_run_time == 2)
-
-		CASE("cleanup")
-
-		destroy()
-
-		render_event:fire(0)
-		render_event:fire(0)
-		render_event:fire(0)
-
-		CHECK(interval_run_time == 2)
 	end
 
 	do
-		CASE("interval with 'hz' specified")
-		table.clear(scheduler.connections)
+		CASE("schedular.wait() is cancelable")
 
-		local dt = 0
-		local destroy = fluid.root(function()
-			fluid.interval(function(a)
-				dt = a
-				return 0
-			end, 100)
+		local triggered = false
+		local thread = task.spawn(function()
+			scheduler.wait()
+			triggered = true
 		end)
 
-		CHECK(dt == 0)
+		CHECK(triggered == false)
 
-		CASE("other with 'hz' specified runs")
+		scheduler.cancel(thread)
 
-		for i = 1, 4 do
-			render_event:fire(i)
-			CHECK(dt == i)
-		end
+		step_scheduler(1)
+		step_scheduler(2)
+		step_scheduler(3)
 
-		destroy()
-	end
-
-	do
-		CASE("interval with no 'hz' specified")
-		table.clear(scheduler.connections)
-
-		local dt = 0
-		local destroy = fluid.root(function()
-			fluid.interval(function(a)
-				dt = a
-				return 0
-			end)
-		end)
-
-		CHECK(dt == 0)
-
-		CASE("other no 'hz' specified runs")
-
-		for i = 1, 4 do
-			render_event:fire(i)
-			CHECK(dt == i)
-		end
-
-		destroy()
-	end
-
-	do
-		CASE("should be blocked if last evaluation to hz is small")
-		local evaulation_times = 0
-
-		local destroy = fluid.root(function()
-			fluid.interval(function(a)
-				evaulation_times += 1
-				return 0
-			end, 1)
-		end)
-
-		CHECK(evaulation_times == 1)
-
-		render_event:fire(0)
-
-		CHECK(evaulation_times == 1)
-
-		render_event:fire(0.5)
-		CHECK(evaulation_times == 1)
-
-		CASE("should pass if last evaulation is big enough")
-
-		render_event:fire(0.5 + 0.001)
-		CHECK(evaulation_times == 2)
-
-		CASE("micro last evaulations")
-
-		render_event:fire(0.999)
-		CHECK(evaulation_times == 2)
-		render_event:fire(0.001)
-		CHECK(evaulation_times == 2)
-		render_event:fire(0.001)
-		CHECK(evaulation_times == 3)
-
-		destroy()
-	end
-
-	do
-		CASE("should return the time since last evaulation")
-
-		local dt = -1
-		local destroy = fluid.root(function()
-			fluid.interval(function(a)
-				dt = a
-				return 0
-			end, 1)
-		end)
-
-		CHECK(dt == 0)
-		render_event:fire(0.6)
-		CHECK(dt == 0)
-		render_event:fire(0.6)
-
-		CHECK(dt == (0.6 * 2)) -- should be 1.2
-
-		CASE("should reset the evaluation time even though we have passed the interval rate")
-
-		render_event:fire(1.1)
-		CHECK(dt == 1.1)
-
-		destroy()
+		CHECK(triggered == false)
 	end
 end)
 
