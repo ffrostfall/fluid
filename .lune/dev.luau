@@ -15,6 +15,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
+	-- stylua: ignore
 	process.exec(
 		"rojo",
 		{ "serve", "roblox-tests.project.json" },
