@@ -1,6 +1,8 @@
 local switch_delay = require("./switch_delay")
 local types = require("../reactive/types")
 
+local function NONE() end
+
 local function show<T, U>(
 	condition: () -> any,
 	truthy: (active: types.Readable<boolean>) -> (T, number?),
@@ -10,7 +12,7 @@ local function show<T, U>(
 		return not not condition()
 	end)({
 		[true] = truthy,
-		[false] = falsy :: any,
+		[false] = falsy or NONE :: any,
 	})
 end
 

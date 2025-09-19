@@ -1,7 +1,6 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
 local types = require("../reactive/types")
-local untrack = require("../reactive/untrack")
 
 type PropertyPair<T> = {
 	tag: "property",
@@ -87,7 +86,7 @@ local function reactive_child_effect(
 	local source_result = func()
 
 	if not source_result then
-		for old_inst in new_child_set do
+		for old_inst in current_child_set do
 			old_inst:Destroy()
 		end
 
