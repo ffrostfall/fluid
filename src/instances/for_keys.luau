@@ -52,7 +52,7 @@ local function indexes<K, VI, VO>(
 
 		-- remove unused values
 		for key in input_nodes do
-			if input[key] then
+			if input[key] or destruction_threads[key] then
 				continue
 			end
 			local node = output_active[key]
