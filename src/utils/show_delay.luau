@@ -14,8 +14,7 @@ local function show<T, U>(
 	})
 end
 
-return show :: & (<T>(condition: () -> any, truthy: types.Readable<T>) -> () -> { T }) & <T, U>(
+return show :: & (<T>(
 	condition: () -> any,
-	truthy: types.Readable<T>,
-	falsy: types.Readable<U>
-) -> () -> { T | U }
+	truthy: (active: types.Readable<boolean>) -> (T, number?)
+) -> () -> { T })

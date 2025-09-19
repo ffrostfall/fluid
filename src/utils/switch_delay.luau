@@ -26,6 +26,7 @@ local function switch<Key, Result>(condition: () -> Key)
 
 		-- we put this into a derive to reduce the amount of updates
 		local callback = derive(function(): Condition<Result>?
+			print(condition(), options)
 			return options[condition()]
 		end)
 
@@ -74,11 +75,11 @@ local function switch<Key, Result>(condition: () -> Key)
 				end
 			end
 
+			p.previous_effect = active_effect
+
 			if not active_effect then
 				return p
 			end
-
-			p.previous_effect = active_effect
 
 			-- first see if an old node was in the process of getting destroyed.
 			-- if it is, save it
