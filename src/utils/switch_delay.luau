@@ -26,7 +26,6 @@ local function switch<Key, Result>(condition: () -> Key)
 
 		-- we put this into a derive to reduce the amount of updates
 		local callback = derive(function(): Condition<Result>?
-			print(condition(), options)
 			return options[condition()]
 		end)
 
