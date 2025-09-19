@@ -23,6 +23,7 @@ local function show<T, U>(
 	end)
 end
 
+-- stylua: ignore
 return show ::
 	& (<T>(condition: () -> any, truthy: types.UsedAs<T>) -> () -> T?)
 	& <T, U>(
