@@ -58,7 +58,7 @@ local function values<V, KI, KO>(
 
 		-- remove unused values
 		for value in input_nodes do
-			if reversed[value] then
+			if reversed[value] or destruction_threads[value] then
 				continue
 			end
 
