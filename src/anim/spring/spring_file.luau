@@ -64,7 +64,7 @@ local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { 
 		return "number", { value }
 	end
 
-	error("unreachable")
+	error(`tried tweening {typeof(value)}`)
 end
 
 local function unpack_type(
@@ -73,7 +73,11 @@ local function unpack_type(
 ): AnimatableDataType
 	if type_string == "color" then
 		-- oklab conversion
-		local intermediate_vector = oklab.to_srgb(vector.create(array[1], array[2], array[3]))
+		local intermediate_vector = vector.clamp(
+			oklab.to_srgb(vector.create(array[1], array[2], array[3])),
+			vector.zero,
+			vector.one
+		)
 
 		return Color3.new(intermediate_vector.x, intermediate_vector.y, intermediate_vector.z)
 	elseif type_string == "vector" then
@@ -152,7 +156,7 @@ function spring_file.create<T>(
 	input: types.UsedAs<T>,
 	speed: number,
 	damping: number
-): (() -> T, (SpringControls<T>) -> ())
+): (() -> read.CastIntoValue<T>, (SpringControls<T>) -> ())
 	-- initialize spring state early so we can reference it in the effect for the output node
 	graph.set_group(graph.new_group("spring"))
 

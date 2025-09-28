@@ -23,10 +23,10 @@ local function show<T, U>(
 	end)
 end
 
--- stylua: ignore
-return show ::
-	& (<T>(condition: () -> any, truthy: types.UsedAs<T>) -> () -> T?)
-	& <T, U>(
+return show :: & (<T>(
+		condition: () -> any,
+		truthy: types.UsedAs<T>
+	) -> () -> read.CastIntoValue<T>?) & <T, U>(
 		condition: () -> any,
 		truthy: types.UsedAs<T>,
 		falsy: types.UsedAs<U>

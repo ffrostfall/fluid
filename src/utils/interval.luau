@@ -5,7 +5,7 @@ local scheduler = require("../scheduler")
 
 local dev_mode = _G.__DEV__ == true
 
-local function interval<T>(func: (dt: number) -> T, hz: number?)
+local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()
 
 	graph.set_group(graph.new_group("interval"))
@@ -22,7 +22,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?)
 		initial_value = func(0)
 	end
 	local node = graph.create_source_node(initial_value)
-	local last_eval = 0
+	local last_eval = offset and -offset or 0
 
 	graph.clear_group()
 
