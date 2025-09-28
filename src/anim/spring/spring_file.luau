@@ -42,11 +42,7 @@ local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } = 
 local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { number })
 	if typeof(value) == "Color3" then
 		-- oklab conversion
-		local intermediate_vector = vector.clamp(
-			oklab.from_srgb(vector.create(value.R, value.G, value.B)),
-			vector.zero,
-			vector.one
-		)
+		local intermediate_vector = oklab.from_srgb(vector.create(value.R, value.G, value.B))
 
 		return "color",
 			{
