@@ -1,6 +1,7 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
 local types = require("../reactive/types")
+local untrack = require("../reactive/untrack")
 
 type PropertyPair<T> = {
 	tag: "property",
@@ -56,7 +57,7 @@ local function bind_property<T>(inst: Instance, property: string, value: types.R
 	local property_node = graph.create_reactive_node(graph.assert_stable_parent(), function()
 		set_property(inst, property, value())
 		return nil
-	end, "deferred", nil)
+	end, "eager", nil)
 
 	graph.evaluate_node(property_node)
 	graph.clear_group()
@@ -87,7 +88,7 @@ local function reactive_child_effect(
 
 	if not source_result then
 		for old_inst in current_child_set do
-			old_inst:Destroy()
+			old_inst.Parent = nil
 		end
 
 		return sets

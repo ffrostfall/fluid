@@ -1,4 +1,4 @@
-type function CastIntoValue(value: type)
+export type function CastIntoValue(value: type)
 	local function get_return_for_fn(t: type)
 		local values = t:returns()
 		local head = values.head

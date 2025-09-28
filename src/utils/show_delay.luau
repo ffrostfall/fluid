@@ -1,3 +1,4 @@
+local reat = require("./read")
 local switch_delay = require("./switch_delay")
 local types = require("../reactive/types")
 
@@ -16,5 +17,9 @@ end
 
 return show :: & (<T>(
 	condition: () -> any,
-	truthy: (active: types.Readable<boolean>) -> (T, number?)
-) -> () -> { T })
+	truthy: types.Readable<T>
+) -> () -> { reat.CastIntoValue<T> }) & <T, U>(
+	condition: () -> any,
+	truthy: types.Readable<T>,
+	falsy: types.Readable<U>
+) -> () -> { T | U }
