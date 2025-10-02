@@ -1,5 +1,6 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
+local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 local untrack = require("../reactive/untrack")
 
@@ -231,13 +232,15 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 		end
 
 		if pairing.tag == "property" then
-			set_property(inst, pairing.name, pairing.value)
+			scheduler.defer(set_property, inst, pairing.name, pairing.value)
 		elseif pairing.tag == "reactive_property" then
 			bind_property(inst, pairing.name, pairing.value)
 		elseif pairing.tag == "event" then
 			bind_event(inst, pairing.name, pairing.event)
 		elseif pairing.tag == "child" then
-			pairing.value.Parent = inst
+			scheduler.defer(function()
+				pairing.value.Parent = inst
+			end)
 		elseif pairing.tag == "reactive_child" then
 			bind_reactive_child(inst, pairing.value)
 		elseif pairing.tag == "action" then
