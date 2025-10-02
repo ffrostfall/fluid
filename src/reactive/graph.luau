@@ -237,11 +237,12 @@ local function destroy<T>(node: Node<T>)
 	while node.children[1] do
 		destroy(node.children[1])
 	end
+	table.clear(node.children)
 end
 
 local function destroy_owned<T>(node: Node<T>)
-	for _, node: Node<T> in node.children do
-		destroy(node)
+	while node.children[1] do
+		destroy(node.children[1])
 	end
 	table.clear(node.children)
 end
