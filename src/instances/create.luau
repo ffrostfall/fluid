@@ -188,15 +188,20 @@ export type function PropertiesFor(class_name: type): type
 		current = current:readparent()
 	end
 
-	local nested_table_or_function_or_child = types.newtable()
+	-- Functions returning a child can return an array of children, or alike functions, nested to any level
 	local function_returns_child = types.newfunction()
-	local union =
-		types.unionof(nested_table_or_function_or_child, function_returns_child, instance, Action)
+	local child_only_union = types.unionof(function_returns_child, instance)
 
-	nested_table_or_function_or_child:setindexer(types.number, union)
-	function_returns_child:setreturns({ union })
+	-- TODO: Use a read only indexer when released to properly accept children which are subtypes of `Instance`
+	-- TODO: Nesting throws a type error, seemingly a solver bug caused whenever the keys are a union instead of direct type
+	-- Happens even with a union between `Instance` and `any`, but disappears when it's just `Instance`
+	local nested_table_or_function_or_child = types.newtable()
+	local nested_child_union = types.unionof(child_only_union, nested_table_or_function_or_child)
+	nested_table_or_function_or_child:setindexer(types.number, nested_child_union)
+	function_returns_child:setreturns({ nested_child_union })
 
-	properties:setindexer(types.number, types.optional(union))
+	local full_union = types.unionof(child_only_union, Action, properties)
+	properties:setindexer(types.number, types.optional(full_union))
 
 	return properties
 end
