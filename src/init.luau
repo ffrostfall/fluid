@@ -28,6 +28,7 @@ local spring = require("@self/anim/spring/spring_file")
 local switch = require("@self/utils/switch")
 local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
+local tween = require("@self/anim/tween/tween")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
 
@@ -48,6 +49,7 @@ local function step(delta_time: number)
 	-- Finally, after all state is reconciled, we animate
 	lerp.step(delta_time)
 	spring.step(delta_time)
+	tween.step(delta_time)
 end
 
 if game then
@@ -96,6 +98,7 @@ fluid.switch_delay = switch_delay
 -- Animation
 fluid.lerp = lerp.create
 fluid.spring = spring.create
+fluid.tween = tween.create
 
 -- Scheduling
 fluid.provide_scheduler = function(): (delta_time: number) -> ()
