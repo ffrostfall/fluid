@@ -87,7 +87,7 @@ local function step_tween(state: TweenState, delta_time: number)
 	state.elapsed = math.min(state.elapsed + delta_time, state.tween_time)
 
 	local easing_function = easings[state.tween_style][state.tween_direction]
-	local alpha = easing_function(state.elapsed / state.tween_time)
+	local alpha = state.tween_time == 0 and 1 or easing_function(state.elapsed / state.tween_time)
 
 	for i = 1, state.elements do
 		state.position[i] = state.start[i] + (state.target[i] - state.start[i]) * alpha
