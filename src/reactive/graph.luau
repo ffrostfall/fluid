@@ -316,7 +316,7 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 
 		return result.ok(node.cached_value)
 	else
-		logging.warn(`effect error: {call.err}`)
+		logging.warn(`effect error: {call.err} {call.trace}`)
 		return result.fail(`effect error: {call.err}`, call.trace)
 	end
 end
