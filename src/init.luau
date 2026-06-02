@@ -57,8 +57,9 @@ if game then
 	local RunService = game:GetService("RunService")
 	tween = require("@self/anim/tween")
 
+	local old_step = step
 	local function step_roblox(delta_time: number)
-		step(delta_time)
+		old_step(delta_time)
 		tween.step(delta_time)
 	end
 

@@ -1,7 +1,7 @@
 -- Based on https://github.com/dphfox/Fusion/blob/2790f7b6272bdf7cd0bbfee259a2f9d79ea20810/src/Animation/packType.luau
 
 local anim_types = require("./anim_types")
-local oklab = require("@src/utils/oklab")
+local oklab = require("../utils/oklab")
 
 local function unpack_type(type_string: string, numbers: { number }): anim_types.Animatable
 	if type_string == "number" then

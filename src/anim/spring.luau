@@ -1,7 +1,7 @@
 --[[
 	Temporarily named this until luau language server fixes issue
 ]]
-local anim_types = require("@src/anim/anim_types")
+local anim_types = require("./anim_types")
 local coefficients = require("./spring_coefficients")
 local graph = require("../reactive/graph")
 local pack_type = require("./pack_type")

@@ -1,10 +1,10 @@
 local TweenService = game:GetService("TweenService")
 
 local anim_types = require("./anim_types")
-local graph = require("@src/reactive/graph")
+local graph = require("../reactive/graph")
 local lerp = require("./lerp")
-local read = require("@src/utils/read")
-local types = require("@src/reactive/types")
+local read = require("../utils/read")
+local types = require("../reactive/types")
 
 type TweenState = {
 	start: any,

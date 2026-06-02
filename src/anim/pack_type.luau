@@ -1,6 +1,6 @@
 -- Based on https://github.com/dphfox/Fusion/blob/2790f7b6272bdf7cd0bbfee259a2f9d79ea20810/src/Animation/unpackType.luau
 
-local oklab = require("@src/utils/oklab")
+local oklab = require("../utils/oklab")
 
 local function pack_type(value: unknown): (string, { number })
 	local type_string = typeof(value)
