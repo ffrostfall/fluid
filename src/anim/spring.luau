@@ -2,12 +2,12 @@
 	Temporarily named this until luau language server fixes issue
 ]]
 local anim_types = require("@src/anim/anim_types")
-local coefficients = require("./coefficients")
-local graph = require("../../reactive/graph")
-local pack_type = require("../pack_type")
-local read = require("../../utils/read")
-local types = require("../../reactive/types")
-local unpack_type = require("../unpack_type")
+local coefficients = require("./spring_coefficients")
+local graph = require("../reactive/graph")
+local pack_type = require("./pack_type")
+local read = require("../utils/read")
+local types = require("../reactive/types")
+local unpack_type = require("./unpack_type")
 
 local SLEEP_VELOCITY = 1e-3
 local SLEEP_DISTANCE = 1e-5
@@ -95,9 +95,9 @@ local function step_spring<T>(state: SpringState, delta_time: number)
 	state.unpacked_value = unpack_type(state.datatype, state.position)
 end
 
-local spring_file = {}
+local spring = {}
 
-function spring_file.create<T>(
+function spring.create<T>(
 	input: types.UsedAs<T>,
 	speed: number,
 	damping: number
@@ -179,11 +179,11 @@ function spring_file.create<T>(
 	end
 end
 
-function spring_file.step(delta_time: number)
+function spring.step(delta_time: number)
 	for spring_state, node in active_springs do
 		step_spring(spring_state, delta_time)
 		graph.update_source_node(node, spring_state.unpacked_value)
 	end
 end
 
-return spring_file
+return spring

@@ -25,12 +25,13 @@ local scheduler = require("@self/scheduler")
 local show = require("@self/utils/show")
 local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
-local spring = require("@self/anim/spring/spring_file")
+local spring = require("@self/anim/spring")
 local switch = require("@self/utils/switch")
 local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
+local tween: typeof(require("@self/anim/tween"))
 
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
@@ -54,6 +55,14 @@ end
 
 if game then
 	local RunService = game:GetService("RunService")
+	tween = require("@self/anim/tween")
+
+	local function step_roblox(delta_time: number)
+		step(delta_time)
+		tween.step(delta_time)
+	end
+
+	step = step_roblox
 
 	scheduler_thread = task.spawn(function()
 		while true do
@@ -98,6 +107,11 @@ fluid.switch_delay = switch_delay
 -- Animation
 fluid.lerp = lerp.create
 fluid.spring = spring.create
+fluid.tween = if tween
+	then tween.create
+	else function()
+		error("tween is unsupported")
+	end :: never
 
 -- Scheduling
 fluid.provide_scheduler = function(): (delta_time: number) -> ()

@@ -97,7 +97,7 @@ function lerp_functions.UDim(initial: UDim, goal: UDim, ratio: number)
 	)
 end
 
-local lerp = {}
+local lerp = { functions = lerp_functions }
 
 function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 	graph.set_group(graph.new_group("lerp"))
