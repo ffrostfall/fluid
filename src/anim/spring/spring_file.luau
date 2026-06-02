@@ -10,8 +10,15 @@ local types = require("../../reactive/types")
 local SLEEP_VELOCITY = 1e-3
 local SLEEP_DISTANCE = 1e-5
 
-type AnimatableDataTypeEnum = "color" | "vector" | "udim" | "udim2" | "number"
-type AnimatableDataType = Color3 | vector | UDim | UDim2 | number
+type AnimatableDataTypeEnum =
+	"color"
+	| "vector"
+	| "udim"
+	| "udim2"
+	| "number"
+	| "Vector2"
+	| "Vector3"
+type AnimatableDataType = Color3 | vector | UDim | UDim2 | number | Vector2 | Vector3
 
 -- In order to support springing multiple data types, we need to abstract values into an array.
 -- It sucks, but it is necessary to support things like UDim2 and Color3.
@@ -58,6 +65,10 @@ local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { 
 		return "vector", { value.x, value.y, value.z }
 	elseif type(value) == "number" then
 		return "number", { value }
+	elseif typeof(value) == "Vector2" then
+		return "Vector2", { value.X, value.Y }
+	elseif typeof(value) == "Vector3" then
+		return "Vector3", { value.X, value.Y, value.Z }
 	end
 
 	error(`tried tweening {typeof(value)}`)
@@ -84,6 +95,10 @@ local function unpack_type(
 		return UDim2.new(array[1], array[2], array[3], array[4])
 	elseif type_string == "number" then
 		return array[1]
+	elseif type_string == "Vector2" then
+		return Vector2.new(array[1], array[2])
+	elseif type_string == "Vector3" then
+		return Vector3.new(array[1], array[2], array[3])
 	end
 
 	return error("unreachable")
