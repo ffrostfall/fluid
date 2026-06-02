@@ -54,7 +54,6 @@ end
 
 if game then
 	local RunService = game:GetService("RunService")
-	local anim_types = require("@self/anim/anim_types")
 
 	scheduler_thread = task.spawn(function()
 		while true do

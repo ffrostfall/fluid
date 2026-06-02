@@ -119,7 +119,7 @@ function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 	graph.clear_group()
 
 	return function()
-		graph.push_dependency(output)
+		graph.push_dependency(output :: T)
 		return output.cached_value
 	end
 end
@@ -136,7 +136,7 @@ function lerp.step(delta_time: number)
 		end
 
 		local interpolated = fn(data.start, data.goal, t)
-		graph.update_source_node(output, interpolated)
+		graph.update_source_node(output :: any, interpolated)
 	end
 end
 

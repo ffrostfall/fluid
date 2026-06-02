@@ -107,7 +107,7 @@ function spring_file.create<T>(
 
 	local output = graph.create_source_node(read(input))
 
-	local call = graph.evaluate_node(output)
+	local call = graph.evaluate_node(output :: T)
 	assert(call.success)
 
 	local starting_value_string, starting_value = pack_type(call.value :: any)
@@ -152,7 +152,7 @@ function spring_file.create<T>(
 	graph.clear_group()
 
 	return function()
-		graph.push_dependency(output)
+		graph.push_dependency(output :: T)
 		return output.cached_value
 	end, function(controls: SpringControls<T>)
 		on_update()
