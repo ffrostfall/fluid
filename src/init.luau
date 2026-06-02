@@ -4,6 +4,7 @@ if _G.__DEV__ == nil then
 end
 
 local action = require("@self/instances/action")
+local anim_types = require("@self/anim/anim_types")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
 local changed = require("@self/instances/changed")
@@ -35,6 +36,7 @@ export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
 export type PropertiesFor<T> = create.PropertiesFor<T>
+export type Animatable = anim_types.Animatable
 
 local scheduler_thread: thread? = nil
 
@@ -52,6 +54,7 @@ end
 
 if game then
 	local RunService = game:GetService("RunService")
+	local anim_types = require("@self/anim/anim_types")
 
 	scheduler_thread = task.spawn(function()
 		while true do

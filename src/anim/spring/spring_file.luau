@@ -1,24 +1,16 @@
 --[[
 	Temporarily named this until luau language server fixes issue
 ]]
+local anim_types = require("@src/anim/anim_types")
 local coefficients = require("./coefficients")
 local graph = require("../../reactive/graph")
-local oklab = require("../../utils/oklab")
+local pack_type = require("../pack_type")
 local read = require("../../utils/read")
 local types = require("../../reactive/types")
+local unpack_type = require("../unpack_type")
 
 local SLEEP_VELOCITY = 1e-3
 local SLEEP_DISTANCE = 1e-5
-
-type AnimatableDataTypeEnum =
-	"color"
-	| "vector"
-	| "udim"
-	| "udim2"
-	| "number"
-	| "Vector2"
-	| "Vector3"
-type AnimatableDataType = Color3 | vector | UDim | UDim2 | number | Vector2 | Vector3
 
 -- In order to support springing multiple data types, we need to abstract values into an array.
 -- It sucks, but it is necessary to support things like UDim2 and Color3.
@@ -29,13 +21,13 @@ type SpringState = {
 	velocity: SpringValue,
 	target: SpringValue,
 
-	datatype: AnimatableDataTypeEnum,
+	datatype: string,
 	elements: number, -- 1-6
 
 	damping: number,
 	speed: number,
 
-	unpacked_value: AnimatableDataType,
+	unpacked_value: anim_types.Animatable,
 }
 
 type SpringControls<T> = {
@@ -44,65 +36,7 @@ type SpringControls<T> = {
 	velocity: T?,
 }
 
-local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } = {}
-
-local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { number })
-	if typeof(value) == "Color3" then
-		-- oklab conversion
-		local intermediate_vector = oklab.from_srgb(vector.create(value.R, value.G, value.B))
-
-		return "color",
-			{
-				intermediate_vector.x,
-				intermediate_vector.y,
-				intermediate_vector.z,
-			}
-	elseif typeof(value) == "UDim2" then
-		return "udim2", { value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset }
-	elseif typeof(value) == "UDim" then
-		return "udim", { value.Scale, value.Offset }
-	elseif type(value) == "vector" then
-		return "vector", { value.x, value.y, value.z }
-	elseif type(value) == "number" then
-		return "number", { value }
-	elseif typeof(value) == "Vector2" then
-		return "Vector2", { value.X, value.Y }
-	elseif typeof(value) == "Vector3" then
-		return "Vector3", { value.X, value.Y, value.Z }
-	end
-
-	error(`tried tweening {typeof(value)}`)
-end
-
-local function unpack_type(
-	type_string: AnimatableDataTypeEnum,
-	array: { number }
-): AnimatableDataType
-	if type_string == "color" then
-		-- oklab conversion
-		local intermediate_vector = vector.clamp(
-			oklab.to_srgb(vector.create(array[1], array[2], array[3])),
-			vector.zero,
-			vector.one
-		)
-
-		return Color3.new(intermediate_vector.x, intermediate_vector.y, intermediate_vector.z)
-	elseif type_string == "vector" then
-		return vector.create(array[1], array[2], array[3])
-	elseif type_string == "udim" then
-		return UDim.new(array[1], array[2])
-	elseif type_string == "udim2" then
-		return UDim2.new(array[1], array[2], array[3], array[4])
-	elseif type_string == "number" then
-		return array[1]
-	elseif type_string == "Vector2" then
-		return Vector2.new(array[1], array[2])
-	elseif type_string == "Vector3" then
-		return Vector3.new(array[1], array[2], array[3])
-	end
-
-	return error("unreachable")
-end
+local active_springs: { [SpringState]: graph.SourceNode<anim_types.Animatable> } = {}
 
 local function subtract(a: { number }, b: { number })
 	local c = table.clone(a)
