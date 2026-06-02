@@ -77,7 +77,10 @@ local function step_tween(state: TweenState): boolean
 	return finished
 end
 
-function tween.create<T>(input: types.UsedAs<T>, info: types.UsedAs<TweenInfo>?)
+function tween.create<T>(
+	input: types.UsedAs<T>,
+	info: types.UsedAs<TweenInfo>?
+): () -> read.CastIntoValue<T>
 	local tween_info = info or TweenInfo.new(0)
 
 	graph.set_group(graph.new_group("tween"))
