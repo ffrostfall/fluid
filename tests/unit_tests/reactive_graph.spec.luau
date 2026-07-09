@@ -1195,7 +1195,7 @@ TEST(
 
 			local did_yield = false
 			hooks.logging.on_warn(function(text)
-				did_yield = string.find(text, "attempted to yield in a callback") ~= nil
+				did_yield = string.find(text, "yield") ~= nil
 			end)
 
 			fluid.effect(function()

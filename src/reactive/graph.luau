@@ -141,8 +141,10 @@ local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): r
 
 	local call: result.Identity<T, unknown>
 	if no_yield_check then
-		local ok, r1 = pcall(no_yield, fn, ...)
-		call = if ok then result.ok(r1) else result.fail(r1.message, r1.trace)
+		local ok, r1 = pcall(no_yield, graph.run_as_unsafe, owner, fn, ...)
+		call = if ok
+			then result.ok(r1)
+			else result.fail(string.match(r1, "failed to run thread: (.-)\ntrace:\n(.*)"))
 	else
 		call = result.call(fn, ...)
 	end
