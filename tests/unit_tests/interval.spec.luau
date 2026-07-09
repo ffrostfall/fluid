@@ -169,7 +169,7 @@ TEST(
 
 			CHECK(interval_result.success == false)
 			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "attempted to yield") ~= nil)
+				CHECK(string.find(interval_result.err :: string, "yield") ~= nil)
 			end
 		end
 
@@ -182,7 +182,7 @@ TEST(
 
 			CHECK(interval_result.success == false)
 			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "attempted to yield") ~= nil)
+				CHECK(string.find(interval_result.err :: string, "yield") ~= nil)
 			end
 		end
 
@@ -196,10 +196,10 @@ TEST(
 			CHECK(interval_result.success == false)
 			if not interval_result.success then
 				-- stylua: ignore
-				CHECK(
-					string.find(interval_result.err :: string, "attempted to yield") == nil 
-						and string.find(interval_result.err :: string, "hello world") ~= nil 
-				)
+				print("HEY HEY IM HERE", interval_result.err, interval_result.trace)
+				print("ok.")
+				CHECK(string.find(interval_result.err :: string, "yield") == nil)
+				CHECK(string.find(interval_result.err :: string, "hello world") ~= nil)
 			end
 		end
 
@@ -208,7 +208,7 @@ TEST(
 
 			local did_yield_count = 0
 			hooks.logging.on_warn(function(text)
-				if string.find(text, "attempted to yield") ~= nil then
+				if string.find(text, "yield") ~= nil then
 					did_yield_count += 1
 				end
 			end)

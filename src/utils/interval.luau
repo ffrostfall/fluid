@@ -12,12 +12,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 
 	local initial_value
 	if dev_mode then
-		-- throw immediately, lets just format the error
-		local ok, r = xpcall(no_yield.check, no_yield.error_handler, func, 0)
-
-		if not ok then
-			error(`{r.message}\n{r.trace}`)
-		end
+		initial_value = no_yield(func, 0)
 	else
 		initial_value = func(0)
 	end
@@ -40,14 +35,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 		if not dev_mode then
 			new_value = func(dt)
 		else
-			local ok, err = xpcall(no_yield.check, no_yield.error_handler, func, dt)
-
-			if not ok then
-				logging.warn_suppressed(`{err.message}\n{err.trace}`)
-				return
-			end
-
-			new_value = err
+			new_value = no_yield(func, dt)
 		end
 
 		graph.update_source_node(node, new_value)
