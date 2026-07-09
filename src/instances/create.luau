@@ -108,7 +108,7 @@ type function get_connect(v: type): type?
 end
 
 type function is_signal(v: type): type?
-	if v == Signal and v.tag == "class" then
+	if v == Signal and v.tag == "extern" then
 		return UnknownConnectCallback
 	-- luau lsp types RBXScriptSignals as tables
 	elseif v.tag == "table" then
@@ -145,7 +145,6 @@ type function GetInstance(class_name: type, instances: type): type
 	return instances:readproperty(class_name) or instance
 end
 
--- temp arg for action, because for some reason its not added as a global automatically
 export type function PropertiesFor(class_name: type): type
 	local object = GetInstance(class_name, Instances)
 	local head_table = {}
