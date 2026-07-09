@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.5
+
+### Changed
+
+- Add PyramidHandleAdornment, StyleQuery, Path2D, UIShadow, VideoDisplay
+- fluid.read now works with intersections
+- Improve PropertiesFor
+
+### Fixes
+
+- Fix no_yield causing a C call stack overflow hopefully
+- Replace `class` tag with `extern` internally for PropertiesFor
+
 ## 0.6.4
 
 ### Fixes

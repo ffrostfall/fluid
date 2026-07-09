@@ -4,7 +4,7 @@ local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 
 local function values<V, KI, KO>(
-	input: types.UsedAs<{ [KI]: V }>,
+	input: types.UsedAs<{ read [KI]: V }>,
 	transform: (
 		value: V,
 		key: () -> KI,
