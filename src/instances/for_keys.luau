@@ -4,7 +4,7 @@ local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 
 local function indexes<K, VI, VO>(
-	input: types.UsedAs<{ [K]: VI }>,
+	input: types.UsedAs<{ read [K]: VI }>,
 	transform: (
 		() -> VI,
 		K,
