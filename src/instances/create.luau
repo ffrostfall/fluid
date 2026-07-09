@@ -2,6 +2,7 @@ local action = require("./action")
 local bind = require("./bind")
 
 type Instances = {
+	PyramidHandleAdornment: PyramidHandleAdornment,
 	AudioChannelSplitter: AudioChannelSplitter,
 	AudioPitchShifter: AudioPitchShifter,
 	AudioDeviceOutput: AudioDeviceOutput,
@@ -50,6 +51,7 @@ type Instances = {
 	ScrollingFrame: ScrollingFrame,
 	SelectionBox: SelectionBox,
 	StyleDerive: StyleDerive,
+	StyleQuery: StyleQuery,
 	SurfaceGui: SurfaceGui,
 	StyleSheet: StyleSheet,
 	SoundGroup: SoundGroup,
