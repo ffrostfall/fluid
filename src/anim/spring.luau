@@ -1,17 +1,16 @@
 --[[
 	Temporarily named this until luau language server fixes issue
 ]]
-local coefficients = require("./coefficients")
-local graph = require("../../reactive/graph")
-local oklab = require("../../utils/oklab")
-local read = require("../../utils/read")
-local types = require("../../reactive/types")
+local anim_types = require("./anim_types")
+local coefficients = require("./spring_coefficients")
+local graph = require("../reactive/graph")
+local pack_type = require("./pack_type")
+local read = require("../utils/read")
+local types = require("../reactive/types")
+local unpack_type = require("./unpack_type")
 
 local SLEEP_VELOCITY = 1e-3
 local SLEEP_DISTANCE = 1e-5
-
-type AnimatableDataTypeEnum = "color" | "vector" | "udim" | "udim2" | "number"
-type AnimatableDataType = Color3 | vector | UDim | UDim2 | number
 
 -- In order to support springing multiple data types, we need to abstract values into an array.
 -- It sucks, but it is necessary to support things like UDim2 and Color3.
@@ -22,13 +21,13 @@ type SpringState = {
 	velocity: SpringValue,
 	target: SpringValue,
 
-	datatype: AnimatableDataTypeEnum,
+	datatype: string,
 	elements: number, -- 1-6
 
 	damping: number,
 	speed: number,
 
-	unpacked_value: AnimatableDataType,
+	unpacked_value: anim_types.Animatable,
 }
 
 type SpringControls<T> = {
@@ -37,57 +36,7 @@ type SpringControls<T> = {
 	velocity: T?,
 }
 
-local active_springs: { [SpringState]: graph.SourceNode<AnimatableDataType> } = {}
-
-local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { number })
-	if typeof(value) == "Color3" then
-		-- oklab conversion
-		local intermediate_vector = oklab.from_srgb(vector.create(value.R, value.G, value.B))
-
-		return "color",
-			{
-				intermediate_vector.x,
-				intermediate_vector.y,
-				intermediate_vector.z,
-			}
-	elseif typeof(value) == "UDim2" then
-		return "udim2", { value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset }
-	elseif typeof(value) == "UDim" then
-		return "udim", { value.Scale, value.Offset }
-	elseif type(value) == "vector" then
-		return "vector", { value.x, value.y, value.z }
-	elseif type(value) == "number" then
-		return "number", { value }
-	end
-
-	error(`tried tweening {typeof(value)}`)
-end
-
-local function unpack_type(
-	type_string: AnimatableDataTypeEnum,
-	array: { number }
-): AnimatableDataType
-	if type_string == "color" then
-		-- oklab conversion
-		local intermediate_vector = vector.clamp(
-			oklab.to_srgb(vector.create(array[1], array[2], array[3])),
-			vector.zero,
-			vector.one
-		)
-
-		return Color3.new(intermediate_vector.x, intermediate_vector.y, intermediate_vector.z)
-	elseif type_string == "vector" then
-		return vector.create(array[1], array[2], array[3])
-	elseif type_string == "udim" then
-		return UDim.new(array[1], array[2])
-	elseif type_string == "udim2" then
-		return UDim2.new(array[1], array[2], array[3], array[4])
-	elseif type_string == "number" then
-		return array[1]
-	end
-
-	return error("unreachable")
-end
+local active_springs: { [SpringState]: graph.SourceNode<anim_types.Animatable> } = {}
 
 local function subtract(a: { number }, b: { number })
 	local c = table.clone(a)
@@ -146,9 +95,9 @@ local function step_spring<T>(state: SpringState, delta_time: number)
 	state.unpacked_value = unpack_type(state.datatype, state.position)
 end
 
-local spring_file = {}
+local spring = {}
 
-function spring_file.create<T>(
+function spring.create<T>(
 	input: types.UsedAs<T>,
 	speed: number,
 	damping: number
@@ -158,7 +107,7 @@ function spring_file.create<T>(
 
 	local output = graph.create_source_node(read(input))
 
-	local call = graph.evaluate_node(output)
+	local call = graph.evaluate_node(output :: T)
 	assert(call.success)
 
 	local starting_value_string, starting_value = pack_type(call.value :: any)
@@ -203,7 +152,7 @@ function spring_file.create<T>(
 	graph.clear_group()
 
 	return function()
-		graph.push_dependency(output)
+		graph.push_dependency(output :: T)
 		return output.cached_value
 	end, function(controls: SpringControls<T>)
 		on_update()
@@ -230,11 +179,11 @@ function spring_file.create<T>(
 	end
 end
 
-function spring_file.step(delta_time: number)
+function spring.step(delta_time: number)
 	for spring_state, node in active_springs do
 		step_spring(spring_state, delta_time)
 		graph.update_source_node(node, spring_state.unpacked_value)
 	end
 end
 
-return spring_file
+return spring

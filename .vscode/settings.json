@@ -3,31 +3,26 @@
 		"editor.formatOnSave": true,
 		"editor.defaultFormatter": "JohnnyMorganz.stylua"
 	},
-
 	"stylua.targetReleaseVersion": "latest",
-	
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.completion.imports.enabled": true,
-
 	"editor.detectIndentation": false,
 	"editor.insertSpaces": false,
 	"prettier.useTabs": true,
-	
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
-	
-	"luau-lsp.types.definitionFiles": [ "types/globals.d.luau" ],
-	
+	"luau-lsp.types.definitionFiles": [
+		"types/globals.d.luau"
+	],
 	"luau-lsp.sourcemap.autogenerate": false,
 	"luau-lsp.sourcemap.enabled": true,
 	"luau-lsp.sourcemap.includeNonScripts": true,
-	
 	"luau-lsp.sourcemap.sourcemapFile": "sourcemap.json",
-	
 	"luau-lsp.ignoreGlobs": [
 		"**/_Index/**",
 		"build/**",
 		"vendor/**",
 		"types/**"
 	],
-	"editor.formatOnSave": true
+	"editor.formatOnSave": true,
+	"luau-lsp.platform.type": "roblox"
 }
