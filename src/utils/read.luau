@@ -29,6 +29,13 @@ export type function CastIntoValue(value: type)
 		return types.unionof(unpack(possible_outcomes))
 	elseif value.tag == "function" then
 		return get_return_for_fn(value)
+	elseif value.tag == "intersection" then
+		local options = {}
+		for i, v in value:components() do
+			options[i] = CastIntoValue(v)
+		end
+
+		return types.intersectionof(unpack(options))
 	else
 		return value
 	end
