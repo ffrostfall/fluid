@@ -2,6 +2,7 @@ local action = require("./action")
 local bind = require("./bind")
 
 type Instances = {
+	PyramidHandleAdornment: PyramidHandleAdornment,
 	AudioChannelSplitter: AudioChannelSplitter,
 	AudioPitchShifter: AudioPitchShifter,
 	AudioDeviceOutput: AudioDeviceOutput,
@@ -43,12 +44,14 @@ type Instances = {
 	ImageLabel: ImageLabel,
 	LineHandleAdornment: LineHandleAdornment,
 	ProximityPrompt: ProximityPrompt,
+	Path2D: Path2D,
 	Part: Part,
 	SphereHandLeAdornment: SphereHandleAdornment,
 	SelectionSphere: SelectionSphere,
 	ScrollingFrame: ScrollingFrame,
 	SelectionBox: SelectionBox,
 	StyleDerive: StyleDerive,
+	StyleQuery: StyleQuery,
 	SurfaceGui: SurfaceGui,
 	StyleSheet: StyleSheet,
 	SoundGroup: SoundGroup,
@@ -73,8 +76,10 @@ type Instances = {
 	UIPadding: UIPadding,
 	UIStroke: UIStroke,
 	UICorner: UICorner,
+	UIShadow: UIShadow,
 	UIScale: UIScale,
 	ViewportFrame: ViewportFrame,
+	VideoDisplay: VideoDisplay,
 	VideoFrame: VideoFrame,
 	WireframeHandleAdornment: WireframeHandleAdornment,
 	WorldModel: WorldModel,
@@ -105,7 +110,7 @@ type function get_connect(v: type): type?
 end
 
 type function is_signal(v: type): type?
-	if v == Signal and v.tag == "class" then
+	if v == Signal and v.tag == "extern" then
 		return UnknownConnectCallback
 	-- luau lsp types RBXScriptSignals as tables
 	elseif v.tag == "table" then
@@ -142,7 +147,6 @@ type function GetInstance(class_name: type, instances: type): type
 	return instances:readproperty(class_name) or instance
 end
 
--- temp arg for action, because for some reason its not added as a global automatically
 export type function PropertiesFor(class_name: type): type
 	local object = GetInstance(class_name, Instances)
 	local head_table = {}
