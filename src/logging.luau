@@ -1,5 +1,4 @@
 --!optimize 1
-local colorful = require("./vendor/colorful")
 local scheduler = require("./scheduler")
 
 local dev_mode = _G.__DEV__ == true
@@ -18,11 +17,7 @@ local function use_traceback(text: string, is_supressed: boolean): string
 end
 
 local function warn_facade(text: string)
-	if warn then
-		warn(text)
-		return
-	end
-	print(colorful.color.yellowBright(text))
+	(warn or print)(text)
 end
 
 local logging = {
