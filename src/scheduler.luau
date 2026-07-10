@@ -1,6 +1,8 @@
-local task = (task or require("@lune/task")) :: typeof(task)
+local task = (task or require("@lute/task")) :: typeof(task)
 
 type RenderCallback = (delta_time: number) -> ()
+
+local cancel = task.cancel or coroutine.close
 
 local connections: { RenderCallback } = {}
 
@@ -27,7 +29,7 @@ function scheduler.wait<T...>(time: number?): number
 end
 
 function scheduler.cancel(thread: thread)
-	return task.cancel(thread)
+	return cancel(thread)
 end
 
 function scheduler.on_render(fn: RenderCallback)

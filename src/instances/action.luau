@@ -1,23 +1,27 @@
-const action_metatable_symbol = table.freeze({})
+local action_metatable_symbol = table.freeze({})
 
-export type Identity = setmetatable<{
+export type Identity = {
 	callback: (inst: Instance) -> (),
 	priority: number,
-}, typeof(action_metatable_symbol)>
 
-const action = {
+	__ACTION_SYMBOL: {},
+}
+
+local action = {
 	metatable = action_metatable_symbol,
 }
 
-function action.is_action(action: unknown): boolean
-	return type(action) == "table" and (getmetatable(action) == action_metatable_symbol)
+function action.is_action(action: unknown | Identity): boolean
+	return type(action) == "table" and action.__ACTION_SYMBOL ~= nil
 end
 
 function action.create(callback: (inst: Instance) -> (), priority: number?): Identity
-	return setmetatable({
+	return {
 		callback = callback,
 		priority = priority or 1,
-	}, action_metatable_symbol)
+
+		__ACTION_SYMBOL = action_metatable_symbol,
+	}
 end
 
 return action

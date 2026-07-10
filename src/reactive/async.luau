@@ -1,6 +1,6 @@
 local graph = require("./graph")
 local logging = require("../logging")
-local task = task or require("@lune/task")
+local task = task or require("@lute/task")
 
 type State = "busy" | "ok"
 
@@ -13,6 +13,8 @@ when created, the async node gets immediately evaluated similar to an effect.
 unlike an effect though, all evaluations are deferred since we make the assumption
 that async yields every single time.
 ]]
+
+local cancel = task.cancel or coroutine.close
 
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local reactive_node: graph.ReactiveNode<any>
@@ -41,8 +43,8 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 			value.state = coroutine.running()
 			local call = graph.run_as(value, callback, set)
 
-			if call.success then
-				set(call.value)
+			if call then
+				set(call)
 			else
 				logging.warn(`async effect error: {call.err} {call.trace}`)
 			end
@@ -52,7 +54,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 
 		graph.push_cleanup(reactive_node, function()
-			task.cancel(thread)
+			cancel(thread)
 		end)
 	end
 

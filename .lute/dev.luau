@@ -1,8 +1,8 @@
-local process = require("@lune/process")
-local task = require("@lune/task")
+local process = require("@lute/process")
+local task = require("@lute/task")
 
 task.spawn(function()
-	process.exec("rojo", {
+	process.run("rojo", {
 		"sourcemap",
 		"roblox-tests.project.json",
 		"--output",
@@ -16,7 +16,7 @@ end)
 
 task.spawn(function()
 	-- stylua: ignore
-	process.exec(
+	process.run(
 		"rojo",
 		{ "serve", "roblox-tests.project.json" },
 		{ stdio = "forward" }

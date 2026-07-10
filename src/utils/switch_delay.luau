@@ -1,6 +1,5 @@
 local derive = require("../reactive/derive")
 local graph = require("../reactive/graph")
-local result = require("../result")
 local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 
@@ -116,18 +115,13 @@ local function switch<Key, Result>(condition: () -> Key)
 		})
 
 		return function()
-			local result: result.Identity<SwitchGraph<Result>, unknown> =
-				graph.evaluate_node(reactive)
+			local result: SwitchGraph<Result> = graph.evaluate_node(reactive)
 
-			if result.success then
-				local values = {}
-				for _, value in result.value.result_values do
-					table.insert(values, value)
-				end
-				return values
-			else
-				error(result, 0)
+			local values = {}
+			for _, value in result.result_values do
+				table.insert(values, value)
 			end
+			return values
 		end
 	end
 end

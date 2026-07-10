@@ -4,7 +4,7 @@
 ]]
 local fluid = require("@src")
 local logging = require("@src/logging")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 local scheduler_interface = fluid.__SCHEDULER_INTERFACE
 local step_fluid = fluid.provide_scheduler()

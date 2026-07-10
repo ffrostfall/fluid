@@ -2,7 +2,7 @@ local graph = require("../reactive/graph")
 local no_yield = require("./no_yield")
 local scheduler = require("../scheduler")
 
-local dev_mode = _G.__DEV__ == true
+local dev_mode = true
 
 local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()

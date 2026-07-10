@@ -1,35 +1,33 @@
-local logging = require("../logging")
 local no_yield = require("../utils/no_yield")
-local result = require("../result")
 local scheduler = require("../scheduler")
 local types = require("./types")
 
-local dev_mode = _G.__DEV__ == true
+local dev_mode = true
 
 export type SourceNode<T> = {
 	last_evaluation: number,
-	read state: "clean",
+	state: "clean",
 	effect: false,
 
 	cached_value: T,
 
 	--- Other nodes that depend on the result of this node.
-	read dependents: { ReactiveNode<T> },
+	dependents: { ReactiveNode<T> },
 }
 
 export type StableNode<T> = {
 	last_evaluation: number,
-	read parent: Node<T> | false,
-	read children: { Node<T> },
+	parent: Node<T> | false,
+	children: { Node<T> },
 
 	--- Describes the effect to run to compute the result of this node.
 	effect: false,
 
-	read state: "clean",
-	read cached_value: T,
+	state: "clean",
+	cached_value: T,
 
 	-- Cleanup functions run when the node dies
-	read cleanups: { () -> () },
+	cleanups: { () -> () },
 }
 
 export type ReactiveNode<T> = {
@@ -62,7 +60,7 @@ export type Node<T> = ReactiveNode<T> | StableNode<T>
 local graph
 local pending_eval: { ReactiveNode<unknown> } = {}
 local processing_node: { [thread]: Node<unknown> } = {}
-local deferred_nodes = {}
+local deferred_nodes: { Node<unknown> } = {}
 local version = 0
 
 local function bump_version()
@@ -95,14 +93,11 @@ local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): r
 	local no_yield_check = dev_mode
 		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
 
-	local call: result.Identity<T, unknown>
+	local call
 	if no_yield_check then
-		local ok, r1 = pcall(no_yield, graph.run_as_unsafe, owner, fn, ...)
-		call = if ok
-			then result.ok(r1)
-			else result.fail(string.match(r1, "failed to run thread: (.-)\ntrace:\n(.*)"))
+		call = no_yield(graph.run_as_unsafe, owner, fn, ...)
 	else
-		call = result.call(fn, ...)
+		call = fn(...)
 	end
 
 	set_scope(previous_processing)
@@ -198,7 +193,7 @@ local function is_similar(a: unknown, b: unknown): boolean
 	return if both_are_tables then false else a == b
 end
 
-local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
+local function update_node<T>(node: ReactiveNode<T>): T
 	local should_reevaluate = #node.depending_on == 0
 	for _, dependency in node.depending_on do
 		-- a dependency was evaluated after this dependency was invalidated
@@ -220,16 +215,15 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 		-- if the dependency is running on the same thread, we have a recursive dependency, otherwise
 		-- it's fine to just recompute the value and have it invalidate later
 		if dependency.state == coroutine.running() then
-			return result.fail(
-				`a recursive dependency has been found, which may result in an infinite loop. this should be unreachable`,
-				debug.traceback(nil, 2)
+			error(
+				`a recursive dependency has been found, which may result in an infinite loop. this should be unreachable`
 			)
 		end
 	end
 
 	if not should_reevaluate then
 		node.state = "clean"
-		return result.ok(node.cached_value)
+		return node.cached_value
 	end
 
 	flush_cleanups(node)
@@ -238,28 +232,27 @@ local function update_node<T>(node: ReactiveNode<T>): result.Identity<T, string>
 
 	node.state = coroutine.running()
 	local previous_result = node.cached_value
-	local call = run_as(node, node.effect, previous_result)
+	local success, res = pcall(run_as, node, node.effect, previous_result)
 	-- we mark it as clean and bump the evaluation value since we don't
 	-- want to re-run the node even if it errored
 	node.state = "clean"
 
-	if call.success then
+	if success then
 		push_dependency(node)
 
 		if
-			node.evaluation ~= "eager" and is_similar(previous_result, call.value)
+			node.evaluation ~= "eager" and is_similar(previous_result, res)
 			or node.evaluation == "async"
 		then
-			return result.ok(node.cached_value)
+			return node.cached_value
 		end
 
 		node.last_evaluation = bump_version()
-		node.cached_value = call.value
+		node.cached_value = res
 
-		return result.ok(node.cached_value)
+		return node.cached_value
 	else
-		logging.warn(`effect error: {call.err} {call.trace}`)
-		return result.fail(`effect error: {call.err}`, call.trace)
+		error(`effect error: {res}`)
 	end
 end
 
@@ -283,26 +276,25 @@ local function is_dirty<T>(node: ReactiveNode<T>)
 	return #node.depending_on == 0
 end
 
-local function evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): result.Identity<T, string>
+local function evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
 	if node.effect == false or node.state == "clean" then
 		push_dependency(node :: SourceNode<T> | ReactiveNode<T>)
 
-		return result.ok(node.cached_value)
+		return node.cached_value
 	elseif coroutine.running() == node.state then
-		return result.fail(
-			`this creates a recursive dependency, which can result in creating a infinite loop.`,
-			debug.traceback(nil, 2)
+		error(
+			"this creates a recursive dependency, which can result in creating a infinite loop."
 		)
 	elseif type(node.state) == "thread" then
 		--todo: should this be allowed?
-		return result.ok(node.cached_value)
+		return node.cached_value
 	elseif node.state == "dead" then
-		return result.ok(node.cached_value)
+		return node.cached_value
 	elseif is_dirty(node :: ReactiveNode<T>) then
 		return update_node(node :: ReactiveNode<T>)
 	else
 		node.state = "clean" :: any
-		return result.ok(node.cached_value)
+		return node.cached_value
 	end
 end
 
@@ -357,11 +349,9 @@ graph = {
 
 function graph.flush_deferred_nodes()
 	for _, node in deferred_nodes do
-		local result = evaluate_node(node)
-
-		if result.success == false then
-			warn(`deferred node error: {result}`)
-		end
+		xpcall(evaluate_node, function()
+			print("error handling!")
+		end, node)
 	end
 
 	table.clear(deferred_nodes)

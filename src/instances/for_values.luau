@@ -23,7 +23,7 @@ local function values<V, KI, KO>(
 	local output_delays: { [V]: number? } = {}
 	local output_active: { [V]: graph.SourceNode<boolean> } = {}
 	local destruction_threads: { [V]: thread } = {}
-	local reactive_node = graph.create_reactive_node(child_parent, false, "lazy", {})
+	local reactive_node = graph.create_reactive_node<<KO>>(child_parent, false, "lazy", {})
 	-- due to how the hybrid push pull graph works, we can't invalidate the reactive
 	-- node. doing so will cause the graph to look at it's dependencies and
 	-- make the correct assumption that the reactive node hasn't updated.
@@ -85,7 +85,7 @@ local function values<V, KI, KO>(
 			if source_node then -- changed
 				graph.update_source_node(source_node, key)
 			else -- new
-				local key_node = graph.create_source_node(key)
+				local key_node = graph.create_source_node<<KI>>(key)
 				local output_node = graph.create_stable_node(child_parent)
 				local active_node = graph.create_source_node(true)
 
@@ -126,8 +126,7 @@ local function values<V, KI, KO>(
 	reactive_node.effect = update
 
 	return function()
-		local result = graph.evaluate_node(reactive_node)
-		return if result.success then result.value else error(result.err)
+		return graph.evaluate_node(reactive_node)
 	end
 end
 

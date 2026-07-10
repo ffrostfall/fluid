@@ -1,6 +1,6 @@
-local process = require("@lune/process")
+local process = require("@lute/process")
 
-process.exec(
+process.run(
 	"rojo",
 	{ "build", "roblox-tests.project.json", "--output", "test-file.rbxl" },
 	{ stdio = "forward" }

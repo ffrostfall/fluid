@@ -26,17 +26,14 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 
 		return Color3.new(result_vector.x, result_vector.y, result_vector.z)
 	end,
-	CFrame = CFrame.identity.Lerp,
+	-- CFrame = CFrame.identity.Lerp,
 	Rect = function(a: Rect, b: Rect, t: number)
-		return Rect.new(
-			general_lerp(a.Min, b.Min, t) :: Vector2,
-			general_lerp(a.Max, b.Max, t) :: Vector2
-		)
+		return Rect.new(general_lerp(a.Min, b.Min, t), general_lerp(a.Max, b.Max, t))
 	end,
 	UDim = function(a: UDim, b: UDim, t: number)
 		return UDim.new(math.lerp(a.Scale, b.Scale, t), math.lerp(a.Offset, b.Offset, t))
 	end,
-	UDim2 = UDim2.new().Lerp,
+	-- UDim2 = UDim2.new().Lerp,
 }
 
 local lerp = {}

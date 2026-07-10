@@ -1,7 +1,7 @@
-local process = require("@lune/process")
+local process = require("@lute/process")
 
 -- stylua: ignore
-process.exec(
+process.run(
 	"rojo",
 	{ "build", "--output", "fluid.rbxm" },
 	{ stdio = "forward" }

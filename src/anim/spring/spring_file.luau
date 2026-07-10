@@ -1,6 +1,3 @@
---[[
-	Temporarily named this until luau language server fixes issue
-]]
 local coefficients = require("./coefficients")
 local graph = require("../../reactive/graph")
 local oklab = require("../../utils/oklab")
@@ -154,12 +151,11 @@ function spring_file.create<T>(
 	damping: number
 ): (() -> read.CastIntoValue<T>, (SpringControls<T>) -> ())
 	-- initialize spring state early so we can reference it in the effect for the output node
-	local output = graph.create_source_node(read(input))
+	local output = graph.create_source_node<<T>>(read(input))
 
 	local call = graph.evaluate_node(output)
-	assert(call.success)
 
-	local starting_value_string, starting_value = pack_type(call.value :: any)
+	local starting_value_string, starting_value = pack_type(call)
 
 	local spring_state: SpringState = {
 		position = starting_value,
@@ -172,7 +168,7 @@ function spring_file.create<T>(
 		speed = speed,
 		damping = damping,
 
-		unpacked_value = call.value :: any,
+		unpacked_value = call :: any,
 	}
 
 	local function on_update()
@@ -183,8 +179,7 @@ function spring_file.create<T>(
 
 		spring_state.target = array
 
-		-- need luau feature: bounded generics
-		active_springs[spring_state] = output :: any
+		active_springs[spring_state] = output
 
 		return nil
 	end

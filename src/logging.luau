@@ -1,7 +1,7 @@
 --!optimize 1
 local scheduler = require("./scheduler")
 
-local dev_mode = _G.__DEV__ == true
+local dev_mode = true
 
 local warn_storage: { [string]: true } = {}
 

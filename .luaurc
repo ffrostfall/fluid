@@ -2,9 +2,8 @@
 	"languageMode": "strict",
 	"aliases": {
 		"src": "./src",
-		"lune": "~/.lune/.typedefs/0.9.4/",
 		"vendor": "./vendor",
-		
+		"lute": "~/.lute/typedefs/1.0.1/lute/",
 		"tests": "./tests"
 	}
 }

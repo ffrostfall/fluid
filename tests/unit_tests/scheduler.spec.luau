@@ -1,7 +1,7 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local hooks = require("@tests/hooks")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
 local step_scheduler = hooks.scheduler.step

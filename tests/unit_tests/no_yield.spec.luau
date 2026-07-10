@@ -1,6 +1,6 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local no_yield = require("@src/utils/no_yield")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 local function yielding_function(...): unknown
 	return coroutine.yield()

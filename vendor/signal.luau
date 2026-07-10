@@ -1,6 +1,6 @@
 --!optimize 2
 --!native
-local task = task or require("@lune/task")
+local task = task or require("@lute/task")
 
 local tspawn = task.spawn
 local cyield = coroutine.yield

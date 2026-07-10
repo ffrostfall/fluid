@@ -1,8 +1,7 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
 local fluid = require("@src/")
 local hooks = require("@tests/hooks")
-local result = require("@src/result")
-local task = require("@lune/task")
+local task = require("@lute/task")
 
 local scheduler = fluid.__SCHEDULER_INTERFACE
 local step_scheduler = hooks.scheduler.step
@@ -163,43 +162,43 @@ TEST(
 		do
 			CASE("error if callback yields with coroutine.yield()")
 
-			local interval_result = result.call(fluid.interval, function(dt)
+			local interval_result, msg = pcall(fluid.interval, function(dt)
 				return coroutine.yield()
 			end)
 
-			CHECK(interval_result.success == false)
-			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "yield") ~= nil)
+			CHECK(interval_result == false)
+			if not interval_result then
+				CHECK(string.find(msg, "yield") ~= nil)
 			end
 		end
 
 		do
 			CASE("error if callback yields with task.wait()")
 
-			local interval_result = result.call(fluid.interval, function(dt)
+			local success, res = pcall(fluid.interval, function(dt)
 				return task.wait()
 			end)
 
-			CHECK(interval_result.success == false)
-			if not interval_result.success then
-				CHECK(string.find(interval_result.err :: string, "yield") ~= nil)
+			CHECK(success == false)
+			if not success then
+				CHECK(string.find(res, "yield") ~= nil)
 			end
 		end
 
 		do
 			CASE("catch user error")
 
-			local interval_result = result.call(fluid.interval, function(dt)
+			local success, err = pcall(fluid.interval, function(dt)
 				error("hello world")
 			end)
 
-			CHECK(interval_result.success == false)
-			if not interval_result.success then
+			CHECK(success == false)
+			if not success then
 				-- stylua: ignore
-				print("HEY HEY IM HERE", interval_result.err, interval_result.trace)
+				print("HEY HEY IM HERE", err)
 				print("ok.")
-				CHECK(string.find(interval_result.err :: string, "yield") == nil)
-				CHECK(string.find(interval_result.err :: string, "hello world") ~= nil)
+				CHECK(string.find(err, "yield") == nil)
+				CHECK(string.find(err, "hello world") ~= nil)
 			end
 		end
 

@@ -5,9 +5,7 @@ local function derive<T>(source: types.Effect<T>): types.Readable<T>
 	local node = graph.create_reactive_node(graph.assert_stable_parent(), source, "lazy")
 
 	local function evaluate()
-		local result = graph.evaluate_node(node)
-
-		return if result.success then result.value else error(result, 0)
+		return graph.evaluate_node(node)
 	end
 
 	return evaluate

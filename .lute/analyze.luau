@@ -1,6 +1,6 @@
-local fs = require("@lune/fs")
-local net = require("@lune/net")
-local process = require("@lune/process")
+local fs = require("@lute/fs")
+local net = require("@lute/net")
+local process = require("@lute/process")
 
 if not fs.isFile("types/globalTypes.d.luau") then
 	local response = net.request(
