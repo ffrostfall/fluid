@@ -2,7 +2,6 @@ local action = require("./action")
 local graph = require("../reactive/graph")
 local scheduler = require("../scheduler")
 local types = require("../reactive/types")
-local untrack = require("../reactive/untrack")
 
 type PropertyPair<T> = {
 	tag: "property",
@@ -54,14 +53,12 @@ local function get_property(inst: Instance, property: string): any
 end
 
 local function bind_property<T>(inst: Instance, property: string, value: types.Readable<T>)
-	graph.set_group(graph.new_group(`bind "{property}"`))
 	local property_node = graph.create_reactive_node(graph.assert_stable_parent(), function()
 		set_property(inst, property, value())
 		return nil
 	end, "eager", nil)
 
 	graph.evaluate_node(property_node)
-	graph.clear_group()
 end
 
 local function bind_event(inst: Instance, event_name: string, func: <T...>(T...) -> ())
@@ -145,7 +142,6 @@ local function reactive_child_effect(
 end
 
 local function bind_reactive_child(inst: Instance, func: () -> Result)
-	graph.set_group(graph.new_group("children"))
 	local stable_node = graph.get_scope() :: graph.StableNode<unknown>
 
 	local children: { new: { [Instance]: true }, current: { [Instance]: true } } =
@@ -156,7 +152,6 @@ local function bind_reactive_child(inst: Instance, func: () -> Result)
 	end, "deferred", children)
 
 	graph.evaluate_node(property_node)
-	graph.clear_group()
 end
 
 local function evaluate(
@@ -227,7 +222,7 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 			(pairing.tag == "property" or pairing.tag == "reactive_property")
 			and pairing.name == "Parent"
 		then
-			parent = pairing :: any
+			parent = pairing
 			continue
 		end
 

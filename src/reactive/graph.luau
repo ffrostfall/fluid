@@ -6,15 +6,6 @@ local types = require("./types")
 
 local dev_mode = _G.__DEV__ == true
 
--- groups are an internal way of organizing nodes within developer mode to enhance
--- and add additonial debugging information for the user. nodes, should NEVER be part of multiple groups!
-export type NodeGroup = {
-	read name: string,
-
-	-- nodes that are part of the group
-	[number]: Node<unknown> | SourceNode<unknown>,
-}
-
 export type SourceNode<T> = {
 	last_evaluation: number,
 	read state: "clean",
@@ -71,12 +62,7 @@ export type Node<T> = ReactiveNode<T> | StableNode<T>
 local graph
 local pending_eval: { ReactiveNode<unknown> } = {}
 local processing_node: { [thread]: Node<unknown> } = {}
-local node_groups: { [Node<unknown> | SourceNode<unknown>]: NodeGroup } = setmetatable(
-	{},
-	{ __mode = "k" }
-)
 local deferred_nodes = {}
-local current_group: NodeGroup? = nil
 local version = 0
 
 local function bump_version()
@@ -90,36 +76,6 @@ end
 
 local function set_scope(node: Node<any>?)
 	processing_node[coroutine.running()] = node
-end
-
-local function new_group(name: string): NodeGroup
-	if not dev_mode then
-		return nil :: any
-	end
-
-	return setmetatable({
-		name = name,
-	}, { __mode = "v" }) -- __mode doesn't collect garbage on strings
-end
-
-local function set_group(group: NodeGroup)
-	if not dev_mode then
-		return
-	end
-
-	current_group = group
-end
-
-local function clear_group()
-	if not dev_mode then
-		return
-	end
-
-	current_group = nil
-end
-
-local function get_group(node: Node<unknown> | SourceNode<unknown>): NodeGroup?
-	return node_groups[node]
 end
 
 local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
@@ -397,11 +353,6 @@ graph = {
 	push_dependency = push_dependency,
 	evaluate_node = evaluate_node,
 	run_as = run_as,
-
-	new_group = new_group,
-	set_group = set_group,
-	clear_group = clear_group,
-	get_group = get_group,
 }
 
 function graph.flush_deferred_nodes()
@@ -437,11 +388,6 @@ function graph.create_reactive_node<T>(
 		cleanups = {},
 	}
 
-	if current_group then
-		table.insert(current_group, node)
-		node_groups[node] = current_group
-	end
-
 	if parent then
 		table.insert(parent.children, node)
 	end
@@ -467,11 +413,6 @@ function graph.create_stable_node<T>(parent: Node<T> | false)
 		cleanups = {},
 	}
 
-	if current_group then
-		table.insert(current_group, node)
-		node_groups[node] = current_group
-	end
-
 	if parent then
 		table.insert(parent.children, node)
 	end
@@ -487,11 +428,6 @@ function graph.create_source_node<T>(value: T): SourceNode<T>
 		state = "clean",
 		dependents = {},
 	}
-
-	if current_group then
-		table.insert(current_group, node)
-		node_groups[node] = current_group
-	end
 
 	return node
 end

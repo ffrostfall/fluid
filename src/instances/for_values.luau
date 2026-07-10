@@ -11,7 +11,6 @@ local function values<V, KI, KO>(
 		active: types.Readable<boolean>
 	) -> (KO, number?)
 ): () -> { KO }
-	graph.set_group(graph.new_group("for_values"))
 	local parent = graph.assert_stable_parent()
 	local child_parent = graph.create_stable_node(parent)
 
@@ -125,7 +124,6 @@ local function values<V, KI, KO>(
 	end
 
 	reactive_node.effect = update
-	graph.clear_group()
 
 	return function()
 		local result = graph.evaluate_node(reactive_node)

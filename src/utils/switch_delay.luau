@@ -19,7 +19,6 @@ local function switch<Key, Result>(condition: () -> Key)
 	return function(
 		options: { [Key]: (types.Readable<boolean>) -> (Result, number?) }
 	): () -> { Result }
-		graph.set_group(graph.new_group("switch_delay"))
 		local parent_node = graph.assert_stable_parent()
 		-- allows us to force an update on the reactive node
 		local update_counter = graph.create_source_node(0)
@@ -116,7 +115,6 @@ local function switch<Key, Result>(condition: () -> Key)
 			result_values = {},
 		})
 
-		graph.clear_group()
 		return function()
 			local result: result.Identity<SwitchGraph<Result>, unknown> =
 				graph.evaluate_node(reactive)

@@ -1,5 +1,4 @@
 local graph = require("../reactive/graph")
-local logging = require("../logging")
 local no_yield = require("./no_yield")
 local scheduler = require("../scheduler")
 
@@ -7,8 +6,6 @@ local dev_mode = _G.__DEV__ == true
 
 local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()
-
-	graph.set_group(graph.new_group("interval"))
 
 	local initial_value
 	if dev_mode then
@@ -18,8 +15,6 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 	end
 	local node = graph.create_source_node(initial_value)
 	local last_eval = offset and -offset or 0
-
-	graph.clear_group()
 
 	local function on_render(dt: number)
 		if hz ~= nil then

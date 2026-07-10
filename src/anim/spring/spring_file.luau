@@ -154,8 +154,6 @@ function spring_file.create<T>(
 	damping: number
 ): (() -> read.CastIntoValue<T>, (SpringControls<T>) -> ())
 	-- initialize spring state early so we can reference it in the effect for the output node
-	graph.set_group(graph.new_group("spring"))
-
 	local output = graph.create_source_node(read(input))
 
 	local call = graph.evaluate_node(output)
@@ -200,7 +198,6 @@ function spring_file.create<T>(
 	)
 
 	graph.evaluate_node(input_node)
-	graph.clear_group()
 
 	return function()
 		graph.push_dependency(output)
