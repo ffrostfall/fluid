@@ -5,11 +5,7 @@ local types = require("../reactive/types")
 
 local function indexes<K, VI, VO>(
 	input: types.UsedAs<{ read [K]: VI }>,
-	transform: (
-		() -> VI,
-		K,
-		active: types.Readable<boolean>
-	) -> (VO, number?)
+	transform: (() -> VI, K, active: types.Readable<boolean>) -> (VO, number?)
 ): () -> { VO }
 	local parent = graph.assert_stable_parent()
 	local child_parent = graph.create_stable_node(parent)

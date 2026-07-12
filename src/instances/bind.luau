@@ -63,7 +63,7 @@ end
 
 local function bind_event(inst: Instance, event_name: string, func: <T...>(T...) -> ())
 	local event = (inst :: any)[event_name] :: RBXScriptSignal
-	local connection = event:Connect(func :: any)
+	local connection = event:Connect(func)
 
 	graph.push_cleanup(graph.assert_scope(), function()
 		connection:Disconnect()
@@ -106,10 +106,9 @@ local function reactive_child_effect(
 		end
 
 		if typeof(child) == "function" then
-			local children: { new: { [Instance]: true }, current: { [Instance]: true } } =
-				{ new = {}, current = {} }
+			local children: { new: { [Instance]: true }, current: { [Instance]: true } } = { new = {}, current = {} }
 
-			graph.create_reactive_node(graph.get_scope() :: any, function(value)
+			graph.create_reactive_node(graph.get_scope(), function(value)
 				return reactive_child_effect(inst, child, value)
 			end, "deferred", children)
 
@@ -144,8 +143,7 @@ end
 local function bind_reactive_child(inst: Instance, func: () -> Result)
 	local stable_node = graph.get_scope() :: graph.StableNode<unknown>
 
-	local children: { new: { [Instance]: true }, current: { [Instance]: true } } =
-		{ new = {}, current = {} }
+	local children: { new: { [Instance]: true }, current: { [Instance]: true } } = { new = {}, current = {} }
 
 	local property_node = graph.create_reactive_node(stable_node :: any, function(value)
 		return reactive_child_effect(inst, func, value)
@@ -154,15 +152,11 @@ local function bind_reactive_child(inst: Instance, func: () -> Result)
 	graph.evaluate_node(property_node)
 end
 
-local function evaluate(
-	inst: Instance,
-	props: { [unknown & number]: unknown },
-	existing_array: { Pair }?
-): { Pair }
+local function evaluate(inst: Instance, props: { [unknown & number]: unknown }, existing_array: { Pair }?): { Pair }
 	local resulting_array: { Pair } = existing_array or {}
 
 	for key, value in props do
-		local value_is_action = action.is_action(value :: any)
+		local value_is_action = action.is_action(value)
 
 		if type(key) == "number" and type(value) == "table" and value_is_action then
 			table.insert(resulting_array, {
@@ -218,10 +212,7 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 	local parent: (ReactivePropertyPair<Instance> | PropertyPair<Instance>)? = nil
 
 	for _, pairing in pairings do
-		if
-			(pairing.tag == "property" or pairing.tag == "reactive_property")
-			and pairing.name == "Parent"
-		then
+		if (pairing.tag == "property" or pairing.tag == "reactive_property") and pairing.name == "Parent" then
 			parent = pairing
 			continue
 		end

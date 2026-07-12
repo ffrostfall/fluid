@@ -41,12 +41,11 @@ local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { 
 		-- oklab conversion
 		local intermediate_vector = oklab.from_srgb(vector.create(value.R, value.G, value.B))
 
-		return "color",
-			{
-				intermediate_vector.x,
-				intermediate_vector.y,
-				intermediate_vector.z,
-			}
+		return "color", {
+			intermediate_vector.x,
+			intermediate_vector.y,
+			intermediate_vector.z,
+		}
 	elseif typeof(value) == "UDim2" then
 		return "udim2", { value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset }
 	elseif typeof(value) == "UDim" then
@@ -60,17 +59,11 @@ local function pack_type(value: AnimatableDataType): (AnimatableDataTypeEnum, { 
 	error(`tried tweening {typeof(value)}`)
 end
 
-local function unpack_type(
-	type_string: AnimatableDataTypeEnum,
-	array: { number }
-): AnimatableDataType
+local function unpack_type(type_string: AnimatableDataTypeEnum, array: { number }): AnimatableDataType
 	if type_string == "color" then
 		-- oklab conversion
-		local intermediate_vector = vector.clamp(
-			oklab.to_srgb(vector.create(array[1], array[2], array[3])),
-			vector.zero,
-			vector.one
-		)
+		local intermediate_vector =
+			vector.clamp(oklab.to_srgb(vector.create(array[1], array[2], array[3])), vector.zero, vector.one)
 
 		return Color3.new(intermediate_vector.x, intermediate_vector.y, intermediate_vector.z)
 	elseif type_string == "vector" then
@@ -168,7 +161,7 @@ function spring_file.create<T>(
 		speed = speed,
 		damping = damping,
 
-		unpacked_value = call :: any,
+		unpacked_value = call,
 	}
 
 	local function on_update()
@@ -185,12 +178,7 @@ function spring_file.create<T>(
 	end
 
 	-- set up the dependency
-	local input_node = graph.create_reactive_node(
-		graph.assert_stable_parent(),
-		on_update,
-		"deferred",
-		read(input)
-	)
+	local input_node = graph.create_reactive_node(graph.assert_stable_parent(), on_update, "deferred", read(input))
 
 	graph.evaluate_node(input_node)
 

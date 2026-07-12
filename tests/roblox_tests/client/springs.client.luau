@@ -34,11 +34,7 @@ mount(function()
 
 		BackgroundColor3 = fluid.spring(
 			fluid.interval(function()
-				return Color3.fromRGB(
-					math.random() * 255,
-					math.random() * 255,
-					math.random() * 255
-				)
+				return Color3.fromRGB(math.random() * 255, math.random() * 255, math.random() * 255)
 			end, 2),
 			1,
 			1

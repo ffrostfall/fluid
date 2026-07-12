@@ -167,23 +167,20 @@ export type function PropertiesFor(class_name: type): type
 				continue
 			end
 
-			local value_read = value.read :: type
+			local value_read = value.read
 			local callback = is_signal(value_read)
 
 			if callback then
-				properties:setproperty(property :: any, types.optional(callback))
+				properties:setproperty(property, types.optional(callback))
 			elseif value_read.tag == "function" or value_read.tag == "intersection" then
 				continue
 			elseif value.write then
 				head_table[1] = value_read
 
 				properties:setproperty(
-					property :: any,
+					property,
 					types.optional(
-						types.unionof(
-							types.newfunction(empty_table :: any, args_table :: any),
-							value.write :: any
-						)
+						types.unionof(types.newfunction(empty_table :: any, args_table :: any), value.write)
 					)
 				)
 			end
@@ -219,9 +216,7 @@ end
 
 local function create<ClassName>(
 	class_name: ClassName | keyof<Instances> | ""
-): (
-	props: PropertiesFor<ClassName>
-) -> GetInstance<ClassName, Instances>
+): (props: PropertiesFor<ClassName>) -> GetInstance<ClassName, Instances>
 	return function(properties)
 		return bind(try_create_instance(class_name), properties) :: any
 	end

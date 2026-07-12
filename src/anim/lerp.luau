@@ -21,8 +21,7 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 		local initial_vector = oklab.from_srgb(vector.create(a.R, a.G, a.B))
 		local goal_vector = oklab.from_srgb(vector.create(b.R, b.G, b.B))
 		local interpolated_vector = vector_lerp(initial_vector, goal_vector, t)
-		local result_vector =
-			vector.clamp(oklab.to_srgb(interpolated_vector), vector.zero, vector.one)
+		local result_vector = vector.clamp(oklab.to_srgb(interpolated_vector), vector.zero, vector.one)
 
 		return Color3.new(result_vector.x, result_vector.y, result_vector.z)
 	end,

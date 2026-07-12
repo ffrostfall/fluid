@@ -3,7 +3,7 @@ local types = require("./types")
 
 local function get_argument_from<T>(...: T): (boolean, T)
 	if select("#", ...) == 0 then
-		return false, nil :: any
+		return false, nil
 	end
 
 	local first_value = ...
@@ -26,7 +26,7 @@ local function source<T>(initial_value: T): types.Source<T>
 			graph.push_dependency(node)
 			return node.cached_value
 		end
-	end :: types.Source<T>
+	end
 end
 
 return source :: (<T>(value: T) -> types.Source<T>) & (<T>() -> types.Source<T>)

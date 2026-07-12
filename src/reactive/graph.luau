@@ -3,6 +3,11 @@ local scheduler = require("../scheduler")
 local types = require("./types")
 
 local dev_mode = true
+local deferred_thread: thread? = nil
+local pending_eval: { ReactiveNode<unknown> } = {}
+local processing_node: { [thread]: Node<unknown> } = {}
+local deferred_nodes: { Node<unknown> } = {}
+local version = 0
 
 export type SourceNode<T> = {
 	last_evaluation: number,
@@ -32,14 +37,14 @@ export type StableNode<T> = {
 
 export type ReactiveNode<T> = {
 	last_evaluation: number,
-	read parent: Node<T> | false,
-	read children: { Node<T> },
+	parent: Node<T> | false,
+	children: { Node<T> },
 
 	--- Describes the effect to run to compute the result of this node.
-	effect: types.Effect<T>,
+	effect: types.Effect<T> | false,
 	-- async is similar to eager, but unlike eager does not actually update the
 	-- value. this is necessary to support a proper async reactive primitive
-	read evaluation: "eager" | "deferred" | "lazy" | "dead" | "async",
+	evaluation: "eager" | "deferred" | "lazy" | "dead" | "async",
 
 	-- clean: the cached_value result can be used immediately
 	-- dirty: you need to recompute the node
@@ -49,91 +54,13 @@ export type ReactiveNode<T> = {
 
 	cached_value: T,
 
-	read cleanups: { () -> () },
+	cleanups: { () -> () },
 
 	depending_on: { SourceNode<T> | ReactiveNode<T> },
-	read dependents: { ReactiveNode<T> },
+	dependents: { ReactiveNode<T> },
 }
 
 export type Node<T> = ReactiveNode<T> | StableNode<T>
-
-local graph
-local pending_eval: { ReactiveNode<unknown> } = {}
-local processing_node: { [thread]: Node<unknown> } = {}
-local deferred_nodes: { Node<unknown> } = {}
-local version = 0
-
-local function bump_version()
-	version += 1
-	return version
-end
-
-local function get_scope()
-	return processing_node[coroutine.running()]
-end
-
-local function set_scope(node: Node<any>?)
-	processing_node[coroutine.running()] = node
-end
-
-local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
-	local previous_processing = get_scope()
-	set_scope(owner)
-
-	local a, b = fn(...)
-
-	set_scope(previous_processing)
-	return a, b
-end
-
-local function run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): result.Identity<T, unknown>
-	local previous_processing = get_scope()
-	set_scope(owner)
-
-	local no_yield_check = dev_mode
-		and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
-
-	local call
-	if no_yield_check then
-		call = no_yield(graph.run_as_unsafe, owner, fn, ...)
-	else
-		call = fn(...)
-	end
-
-	set_scope(previous_processing)
-
-	return call
-end
-
-local deferred_thread: thread?
-local function defer_node<T>(node: ReactiveNode<T>)
-	if node.state == "dirty" then
-		return
-	end
-	node.state = "dirty" :: any
-	table.insert(deferred_nodes, node)
-
-	if deferred_thread == nil then
-		deferred_thread = scheduler.defer(function()
-			assert(graph)
-
-			graph.flush_deferred_nodes()
-			deferred_thread = nil
-		end)
-	end
-end
-
-local function push_dependency<T>(node: SourceNode<T> | ReactiveNode<T>)
-	local scope = get_scope()
-	if not (scope and scope.effect) then
-		return
-	end
-
-	assert(scope ~= node, `node tried to add itself as dependency`)
-
-	table.insert(node.dependents, scope)
-	table.insert(scope.depending_on, node)
-end
 
 local function find_and_swap_pop<T>(t: { T }, v: T)
 	local i = table.find(t, v) :: number
@@ -161,39 +88,111 @@ local function remove_dependencies<T>(node: Node<T>)
 	table.clear(node.depending_on)
 end
 
-local function destroy<T>(node: Node<T>)
+local function bump_version()
+	version += 1
+	return version
+end
+
+local function get_scope()
+	return processing_node[coroutine.running()]
+end
+
+local function set_scope(node: Node<any>?)
+	processing_node[coroutine.running()] = node
+end
+
+local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
+	local previous_processing = get_scope()
+	set_scope(owner)
+
+	local a, b = fn(...)
+
+	set_scope(previous_processing)
+	return a, b
+end
+
+local function is_similar(a: unknown, b: unknown): boolean
+	local both_are_tables = type(a) == "table"
+		and type(b) == "table"
+		and not table.isfrozen(a)
+		and not table.isfrozen(b)
+
+	return if both_are_tables then false else a == b
+end
+
+local function push_dependency_to_active_scope<T>(node: SourceNode<T> | ReactiveNode<T>)
+	local scope = get_scope()
+	if not (scope and scope.effect) then
+		return
+	end
+
+	assert(scope ~= node, `node tried to add itself as dependency`)
+
+	table.insert(node.dependents, scope)
+	table.insert(scope.depending_on, node)
+end
+
+local function node_destroy<T>(node: Node<T>)
 	flush_cleanups(node)
 	remove_dependencies(node)
 
 	if node.parent then
 		find_and_swap_pop(node.parent.children, node)
 
-		node.parent = false :: any -- TODO: Luau type state issue
+		node.parent = false
 	end
 
 	while node.children[1] do
-		destroy(node.children[1])
+		node_destroy(node.children[1])
 	end
 	table.clear(node.children)
 end
 
-local function destroy_owned<T>(node: Node<T>)
+local function node_destroy_owned<T>(node: Node<T>)
 	while node.children[1] do
-		destroy(node.children[1])
+		node_destroy(node.children[1])
 	end
 	table.clear(node.children)
 end
 
-local function is_similar(a: unknown, b: unknown): boolean
-	local both_are_tables = type(a) == "table"
-		and type(b) == "table"
-		and not table.isfrozen(a :: any)
-		and not table.isfrozen(b :: any)
+local graph = {}
 
-	return if both_are_tables then false else a == b
+local function graph_run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): (T, unknown)
+	local previous_processing = get_scope()
+	set_scope(owner)
+
+	local no_yield_check = dev_mode and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+
+	local call
+	if no_yield_check then
+		call = no_yield(graph.run_as_unsafe, owner, fn, ...)
+	else
+		call = fn(...)
+	end
+
+	set_scope(previous_processing)
+
+	return call
 end
 
-local function update_node<T>(node: ReactiveNode<T>): T
+local function graph_defer_node<T>(node: ReactiveNode<T>)
+	if node.state == "dirty" then
+		return
+	end
+	node.state = "dirty"
+	table.insert(deferred_nodes, node)
+
+	if deferred_thread == nil then
+		deferred_thread = scheduler.defer(function()
+			assert(graph)
+
+			graph.flush_deferred_nodes()
+			deferred_thread = nil
+		end)
+	end
+end
+
+local function graph_update_node<T>(node: ReactiveNode<T>): T
 	local should_reevaluate = #node.depending_on == 0
 	for _, dependency in node.depending_on do
 		-- a dependency was evaluated after this dependency was invalidated
@@ -205,7 +204,7 @@ local function update_node<T>(node: ReactiveNode<T>): T
 		end
 		-- the dependency is dirty, so we have to reevaluate that dependency
 		if dependency.state == "dirty" then
-			update_node(dependency :: ReactiveNode<T>)
+			graph_update_node(dependency)
 			if dependency.last_evaluation < node.last_evaluation then
 				continue
 			end
@@ -227,23 +226,20 @@ local function update_node<T>(node: ReactiveNode<T>): T
 	end
 
 	flush_cleanups(node)
-	destroy_owned(node)
+	node_destroy_owned(node)
 	remove_dependencies(node)
 
 	node.state = coroutine.running()
 	local previous_result = node.cached_value
-	local success, res = pcall(run_as, node, node.effect, previous_result)
+	local success, res = pcall(graph_run_as, node, node.effect, previous_result)
 	-- we mark it as clean and bump the evaluation value since we don't
 	-- want to re-run the node even if it errored
 	node.state = "clean"
 
 	if success then
-		push_dependency(node)
+		push_dependency_to_active_scope(node)
 
-		if
-			node.evaluation ~= "eager" and is_similar(previous_result, res)
-			or node.evaluation == "async"
-		then
+		if node.evaluation ~= "eager" and is_similar(previous_result, res) or node.evaluation == "async" then
 			return node.cached_value
 		end
 
@@ -265,7 +261,7 @@ local function is_dirty<T>(node: ReactiveNode<T>)
 		-- if a dependent was evaluated after this node was evaluated, it's dirty
 		if dependency.effect and dependency.state == "dirty" then
 			-- make sure the dependency isn't dirty
-			update_node(dependency :: ReactiveNode<T>)
+			graph_update_node(dependency :: ReactiveNode<T>)
 		end
 
 		if dependency.last_evaluation > node.last_evaluation then
@@ -276,40 +272,38 @@ local function is_dirty<T>(node: ReactiveNode<T>)
 	return #node.depending_on == 0
 end
 
-local function evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
+local function graph_evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
 	if node.effect == false or node.state == "clean" then
-		push_dependency(node :: SourceNode<T> | ReactiveNode<T>)
+		push_dependency_to_active_scope(node)
 
 		return node.cached_value
 	elseif coroutine.running() == node.state then
-		error(
-			"this creates a recursive dependency, which can result in creating a infinite loop."
-		)
+		error("this creates a recursive dependency, which can result in creating a infinite loop.")
 	elseif type(node.state) == "thread" then
 		--todo: should this be allowed?
 		return node.cached_value
 	elseif node.state == "dead" then
 		return node.cached_value
-	elseif is_dirty(node :: ReactiveNode<T>) then
-		return update_node(node :: ReactiveNode<T>)
+	elseif is_dirty(node) then
+		return graph_update_node(node)
 	else
-		node.state = "clean" :: any
+		node.state = "clean"
 		return node.cached_value
 	end
 end
 
-local function invalidate_loop<T>(node: SourceNode<T> | ReactiveNode<T>)
+local function graph_invalidate_loop<T>(node: SourceNode<T> | ReactiveNode<T>)
 	if node.state == "dirty" then
 		return
 	end
 
 	for _, value in node.dependents do
-		invalidate_loop(value)
+		graph_invalidate_loop(value)
 		if value.evaluation == "eager" or value.evaluation == "async" then
 			value.state = "dirty"
 			table.insert(pending_eval, value)
 		elseif value.evaluation == "deferred" then
-			defer_node(value)
+			graph_defer_node(value)
 		elseif value.evaluation == "lazy" then
 			value.state = "dirty"
 		end
@@ -317,39 +311,21 @@ local function invalidate_loop<T>(node: SourceNode<T> | ReactiveNode<T>)
 end
 
 local function invalidate<T>(node: ReactiveNode<T> | SourceNode<T>)
-	invalidate_loop(node)
+	graph_invalidate_loop(node)
 
 	for _, node in pending_eval do
 		for _, dependent in node.depending_on do
-			run_as_unsafe(nil, evaluate_node, dependent)
+			run_as_unsafe(nil, graph_evaluate_node, dependent)
 		end
 
-		run_as_unsafe(nil, evaluate_node, node)
+		run_as_unsafe(nil, graph_evaluate_node, node)
 	end
 	table.clear(pending_eval)
 end
 
-graph = {
-	-- re-exports of local utilities
-	get_scope = get_scope,
-	set_scope = set_scope,
-
-	flush_cleanups = flush_cleanups,
-	destroy_owned = destroy_owned,
-
-	defer_node = defer_node,
-
-	invalidate = invalidate,
-	destroy = destroy,
-	run_as_unsafe = run_as_unsafe,
-	push_dependency = push_dependency,
-	evaluate_node = evaluate_node,
-	run_as = run_as,
-}
-
 function graph.flush_deferred_nodes()
 	for _, node in deferred_nodes do
-		xpcall(evaluate_node, function()
+		xpcall(graph_evaluate_node, function()
 			print("error handling!")
 		end, node)
 	end
@@ -358,7 +334,7 @@ function graph.flush_deferred_nodes()
 end
 
 function graph.create_reactive_node<T>(
-	parent: StableNode<T> | false,
+	parent: Node<T> | false,
 	effect: types.Effect<T> | false,
 	evaluation: "eager" | "deferred" | "lazy" | "async",
 	cached_value: T
@@ -374,7 +350,7 @@ function graph.create_reactive_node<T>(
 		depending_on = {},
 		dependents = {},
 
-		children = {} :: { Node<T> },
+		children = {},
 		cleanups = {},
 	}
 
@@ -453,5 +429,17 @@ function graph.assert_stable_parent<T>(): StableNode<T>
 
 	return scope :: StableNode<T>
 end
+
+graph.get_scope = get_scope
+graph.set_scope = set_scope
+graph.flush_cleanups = flush_cleanups
+graph.destroy_owned = node_destroy_owned
+graph.defer_node = graph_defer_node
+graph.invalidate = invalidate
+graph.destroy = node_destroy
+graph.run_as_unsafe = run_as_unsafe
+graph.push_dependency = push_dependency_to_active_scope
+graph.evaluate_node = graph_evaluate_node
+graph.run_as = graph_run_as
 
 return graph

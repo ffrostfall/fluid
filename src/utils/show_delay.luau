@@ -15,10 +15,7 @@ local function show<T, U>(
 	})
 end
 
-return show :: & (<T>(
-	condition: () -> any,
-	truthy: types.Readable<T>
-) -> () -> { reat.CastIntoValue<T> }) & <T, U>(
+return show :: & (<T>(condition: () -> any, truthy: types.Readable<T>) -> () -> { reat.CastIntoValue<T> }) & <T, U>(
 	condition: () -> any,
 	truthy: types.Readable<T>,
 	falsy: types.Readable<U>

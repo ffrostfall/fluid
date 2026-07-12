@@ -18,7 +18,7 @@ function tests.unit_tests()
 
 	local ok = FINISH()
 	if not ok then
-		process.exit(1)
+		require("@lute/process").exit(1)
 	end
 end
 

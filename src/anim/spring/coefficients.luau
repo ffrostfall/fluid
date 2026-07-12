@@ -1,8 +1,4 @@
-local function under_dampened(
-	t: number,
-	speed: number,
-	damping: number
-): (number, number, number, number)
+local function under_dampened(t: number, speed: number, damping: number): (number, number, number, number)
 	local alpha = speed * math.sqrt(1 - damping ^ 2)
 	local over_alpha = 1 / alpha
 	local exp = math.exp(-1 * t * speed * damping)
@@ -21,17 +17,10 @@ local function critically_dampened(t: number, speed: number): (number, number, n
 	local time_speed_neg1 = time_speed * -1
 	local exp = math.exp(time_speed_neg1)
 
-	return exp * (time_speed + 1),
-		exp * t,
-		exp * (time_speed_neg1 * speed),
-		exp * (time_speed_neg1 + 1)
+	return exp * (time_speed + 1), exp * t, exp * (time_speed_neg1 * speed), exp * (time_speed_neg1 + 1)
 end
 
-local function over_dampened(
-	t: number,
-	damping: number,
-	speed: number
-): (number, number, number, number)
+local function over_dampened(t: number, damping: number, speed: number): (number, number, number, number)
 	local alpha = math.sqrt(damping ^ 2 - 1)
 	local neg_half_over_alpha_speed = -0.5 / (alpha * speed)
 	local z1 = speed * (alpha + damping) * -1
@@ -45,11 +34,7 @@ local function over_dampened(
 		(exp1 * z1 - exp2 * z2) * neg_half_over_alpha_speed
 end
 
-local function coefficients(
-	t: number,
-	damping: number,
-	speed: number
-): (number, number, number, number)
+local function coefficients(t: number, damping: number, speed: number): (number, number, number, number)
 	if t == 0 or speed == 0 then
 		return 1, 0, 0, 1
 	end

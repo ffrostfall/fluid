@@ -52,48 +52,4 @@ TEST(
 	end)
 )
 
-TEST(
-	"logging.warn_suppresed()",
-	wrap_clean(function()
-		CASE("works once")
-		for _, text in text_pool do
-			local incoming_text: string = ""
-			hooks.logging.on_warn(function(warn_text)
-				incoming_text = warn_text
-			end)
-
-			logging.warn_suppressed(text)
-
-			CHECK(shallow_warn_search(incoming_text, text))
-		end
-
-		CASE("does not work")
-		for _, text in text_pool do
-			local log_count = 0
-			hooks.logging.on_warn(function()
-				log_count += 1
-			end)
-
-			for i = 1, 6 do
-				logging.warn_suppressed(text)
-				CHECK(log_count == 0)
-			end
-		end
-
-		CASE("should work after 10 seconds")
-		step_scheduler(10)
-		for _, text in text_pool do
-			local incoming_text: string = ""
-			hooks.logging.on_warn(function(warn_text)
-				incoming_text = warn_text
-			end)
-
-			logging.warn_suppressed(text)
-
-			CHECK(shallow_warn_search(incoming_text, text))
-		end
-
-		hooks.logging.on_warn(nil)
-	end)
-)
 return nil

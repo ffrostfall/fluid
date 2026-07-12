@@ -29,11 +29,7 @@ TEST("no_yield", function()
 				pass = true
 			end)
 
-			CHECK(
-				ok == false
-					and pass == false
-					and string.find(traceback :: string, "yielding_function")
-			)
+			CHECK(ok == false and pass == false and string.find(traceback :: string, "yielding_function"))
 		end
 	end
 

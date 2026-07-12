@@ -1,29 +1,17 @@
-export type Error = {
-	trace: string,
-	message: string,
-	yielded: boolean,
-}
-
 -- errors "thread is not yieldable" or "attempt to yield across metamethod/C-call boundary"
--- TODO: Luau type state issue
+local task = task or require("@lute/task")
 
-local function no_yield<I..., O...>(callback: (I...) -> O..., ...: I...): (thread, O...)
-	local co = coroutine.create(callback)
-	local output: { any } = table.pack(coroutine.resume(co, ...))
-	local ok = table.remove(output, 1)
+local function no_yield<I..., O...>(callback: (I...) -> O..., ...: I...): O...
+	local a, b
+	local thread = task.spawn(function(...)
+		a, b = callback(...)
+	end, ...)
 
-	if not ok then
-		local trace = debug.traceback(co)
-		error(`failed to run thread: {output[1]}\ntrace:\n{trace}`, 1)
+	if coroutine.status(thread) == "suspended" then
+		error(thread)
 	end
 
-	if coroutine.status(co) ~= "dead" then
-		local trace = debug.traceback(co)
-		coroutine.close(co)
-		error(`failed to run thread: yielded in callback\ntrace:\n{trace}`, 1)
-	end
-
-	return table.unpack(output)
+	return a, b
 end
 
 return no_yield

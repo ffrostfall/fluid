@@ -3,11 +3,7 @@ local read = require("./read")
 local types = require("../reactive/types")
 local untrack = require("../reactive/untrack")
 
-local function show<T, U>(
-	condition: () -> any,
-	truthy: types.UsedAs<T>,
-	falsy: types.UsedAs<U>?
-): () -> T | U
+local function show<T, U>(condition: () -> any, truthy: types.UsedAs<T>, falsy: types.UsedAs<U>?): () -> T | U
 	return derive(function()
 		if condition() then
 			return untrack(function()
@@ -23,10 +19,7 @@ local function show<T, U>(
 	end)
 end
 
-return show :: & (<T>(
-		condition: () -> any,
-		truthy: types.UsedAs<T>
-	) -> () -> read.CastIntoValue<T>?) & <T, U>(
+return show :: & (<T>(condition: () -> any, truthy: types.UsedAs<T>) -> () -> read.CastIntoValue<T>?) & <T, U>(
 		condition: () -> any,
 		truthy: types.UsedAs<T>,
 		falsy: types.UsedAs<U>

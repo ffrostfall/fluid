@@ -15,9 +15,7 @@ type SwitchGraph<Result> = {
 }
 
 local function switch<Key, Result>(condition: () -> Key)
-	return function(
-		options: { [Key]: (types.Readable<boolean>) -> (Result, number?) }
-	): () -> { Result }
+	return function(options: { [Key]: (types.Readable<boolean>) -> (Result, number?) }): () -> { Result }
 		local parent_node = graph.assert_stable_parent()
 		-- allows us to force an update on the reactive node
 		local update_counter = graph.create_source_node(0)
@@ -55,18 +53,13 @@ local function switch<Key, Result>(condition: () -> Key)
 			end
 
 			-- previous effect isn't the same as active effect, so destroy previous effect
-			if
-				previous_effect
-				and not p.threads[previous_effect]
-				and p.scopes[previous_effect]
-			then
+			if previous_effect and not p.threads[previous_effect] and p.scopes[previous_effect] then
 				local delay_by = p.delay_by[previous_effect]
 
 				graph.update_source_node(p.active_nodes[previous_effect], false)
 
 				if delay_by then
-					p.threads[previous_effect] =
-						scheduler.delay(delay_by, destroy_delayed, p, previous_effect)
+					p.threads[previous_effect] = scheduler.delay(delay_by, destroy_delayed, p, previous_effect)
 				else
 					destroy(p, previous_effect)
 				end
