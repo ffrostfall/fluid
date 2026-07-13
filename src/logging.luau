@@ -1,15 +1,8 @@
 --!optimize 1
 local dev_mode = true
 
-local function format(text: string, is_supressed: boolean): string
-	if is_supressed then
-		return (string.format("[fluid][SUPRESSED]: %*", text))
-	end
+local function format(text: string): string
 	return (string.format("[fluid]: %*", text))
-end
-
-local function use_traceback(text: string, is_supressed: boolean): string
-	return (debug.traceback(format(text, is_supressed), 3))
 end
 
 local function warn_facade(text: string)
@@ -22,22 +15,20 @@ local logging = {
 	errors = {},
 }
 
-function logging.trace(text: string, traceback: boolean?)
-	if traceback == nil then
-		traceback = dev_mode
-	end
-
-	if dev_mode then
-		print(if traceback then use_traceback(text, false) else format(text, false))
-	end
+function logging.warn(text: string)
+	logging.__warn_facade(format(text))
 end
 
-function logging.warn(text: string, traceback: boolean?)
-	if traceback == nil then
-		traceback = dev_mode
-	end
+function logging.error(text: string)
+	error(format(text))
+end
 
-	logging.__warn_facade(if traceback then use_traceback(text, false) else format(text, false))
+function logging.error_traceback(text: string, thread: thread)
+	error(debug.traceback(thread, format(text), 2))
+end
+
+function logging.warn_traceback(text: string, thread: thread)
+	logging.__warn_facade(debug.traceback(thread, format(text), 2))
 end
 
 function logging.errors.inst_prop_nonexistent(inst_class: string, inst_property: string)
@@ -48,7 +39,9 @@ function logging.errors.inst_class_nonexistent(inst_class: string)
 	return `Instance class {inst_class} does not exist [inst_class_nonexistent]`
 end
 
-function logging.errors.changed_user_fn_errored() end
+function logging.errors.changed_user_fn_errored()
+	return ""
+end
 
 function logging.errors.cleanup_invalid_scope()
 	return "Cannot use cleanup outside of a reactive/stable scope [cleanup_invalid_scope]"
@@ -62,15 +55,25 @@ function logging.errors.root_already_destroyed()
 	return "Root was already destroyed before"
 end
 
-function logging.errors.root_user_errored() end
+function logging.errors.root_user_errored()
+	return "root user error"
+end
 
-function logging.errors.interval_user_yielded() end
+function logging.errors.interval_user_yielded()
+	return "interval user yield"
+end
 
-function logging.errors.interval_user_errored() end
+function logging.errors.interval_user_errored()
+	return "interval user error"
+end
 
-function logging.errors.graph_effect_errored() end
+function logging.errors.graph_effect_errored()
+	return "graph effect error"
+end
 
-function logging.errors.graph_effect_yielded() end
+function logging.errors.graph_effect_yielded()
+	return "graph effect yield"
+end
 
 function logging.errors.graph_nil_in_deferred()
 	return "Internal graph reference was nil"
@@ -96,8 +99,8 @@ function logging.errors.graph_cant_call_while_parent_scope_reactive(func_name: s
 	return `Can't call fluid.{func_name} while the current scope is reactive`
 end
 
-function logging.errors.likely_internal()
-	return "This might be an internal bug."
+function logging.errors.fluid_assert()
+	return "fluid internal assertion failed"
 end
 
 return logging

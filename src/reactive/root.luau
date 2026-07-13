@@ -19,7 +19,7 @@ local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup,
 
 	local results = {}
 
-	local success, result = pcall(graph.run_as, node, function(destroy)
+	local success, result = pcall(graph.run_as<<(() -> ())>>, node, function(destroy)
 		results = { fn(destroy) }
 		return nil
 	end, destroy)

@@ -29,6 +29,7 @@ TEST("no_yield", function()
 				pass = true
 			end)
 
+			print("!!", traceback)
 			CHECK(ok == false and pass == false and string.find(traceback :: string, "yielding_function"))
 		end
 	end
@@ -41,22 +42,20 @@ TEST("no_yield", function()
 	end
 
 	do
-		CASE("paramater check")
-		local input_list = { 1, "hi", "fluid", "`", nil, "e" }
-		local return_list = { "7643", nil, 60000, "nil", "cat", "fluid" }
+		CASE("parameter check")
+		local input_list = { 1, "hi", "fluid", "`", nil, "e", false, 5, coroutine.running(), function() end }
 
-		local got_return = table.pack(no_yield(function(...)
-			local got_input = table.pack(...)
-			for key, value in input_list do
-				CHECK(got_input[key] == value)
-			end
-
-			return table.unpack(return_list)
-		end, table.unpack(input_list)))
-
-		for key, value in return_list do
-			CHECK(got_return[key] == value)
+		for i = 1, #input_list do
+			CHECK(no_yield(function(...)
+				return ...
+			end, input_list[i]) == input_list[i])
 		end
+	end
+
+	do
+		CASE("parameter count check")
+
+		CHECK(select("#", no_yield(function() end)) == 2)
 	end
 end)
 

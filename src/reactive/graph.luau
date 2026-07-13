@@ -1,6 +1,6 @@
 local no_yield = require("../utils/no_yield")
 local scheduler = require("../scheduler")
-local types = require("./types")
+local types_2 = require("./types")
 
 local dev_mode = true
 local deferred_thread: thread? = nil
@@ -41,7 +41,7 @@ export type ReactiveNode<T> = {
 	children: { Node<T> },
 
 	--- Describes the effect to run to compute the result of this node.
-	effect: types.Effect<T> | false,
+	effect: types_2.Effect<T> | false,
 	-- async is similar to eager, but unlike eager does not actually update the
 	-- value. this is necessary to support a proper async reactive primitive
 	evaluation: "eager" | "deferred" | "lazy" | "dead" | "async",
@@ -101,14 +101,14 @@ local function set_scope(node: Node<any>?)
 	processing_node[coroutine.running()] = node
 end
 
-local function run_as_unsafe<T..., U...>(owner: Node<any>?, fn: (U...) -> T..., ...: U...): T...
+local function run_as_unsafe<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): T
 	local previous_processing = get_scope()
-	set_scope(owner)
+	set_scope(node)
 
-	local a, b = fn(...)
+	local a = fn(...)
 
 	set_scope(previous_processing)
-	return a, b
+	return a
 end
 
 local function is_similar(a: unknown, b: unknown): boolean
@@ -157,15 +157,15 @@ end
 
 local graph = {}
 
-local function graph_run_as<T, U...>(owner: Node<any>?, fn: (U...) -> T, ...: U...): (T, unknown)
+local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): T
 	local previous_processing = get_scope()
-	set_scope(owner)
+	set_scope(node)
 
-	local no_yield_check = dev_mode and (owner == nil or not owner.effect or owner["evaluation"] ~= "async")
+	local no_yield_check = dev_mode and (node == nil or not node.effect or node["evaluation"] ~= "async")
 
 	local call
 	if no_yield_check then
-		call = no_yield(graph.run_as_unsafe, owner, fn, ...)
+		call = no_yield(graph.run_as_unsafe, node, fn, ...)
 	else
 		call = fn(...)
 	end
@@ -335,7 +335,7 @@ end
 
 function graph.create_reactive_node<T>(
 	parent: Node<T> | false,
-	effect: types.Effect<T> | false,
+	effect: types_2.Effect<T> | false,
 	evaluation: "eager" | "deferred" | "lazy" | "async",
 	cached_value: T
 ): ReactiveNode<T>
@@ -398,7 +398,7 @@ function graph.create_source_node<T>(value: T): SourceNode<T>
 	return node
 end
 
-function graph.update_source_node<T>(node: SourceNode<T>, value: T)
+function graph.update_node<T>(node: ReactiveNode<T> | SourceNode<T>, value: T)
 	if is_similar(node.cached_value, value) then
 		return
 	end

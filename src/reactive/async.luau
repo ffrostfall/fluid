@@ -1,5 +1,6 @@
 local graph = require("./graph")
 local logging = require("../logging")
+local scheduler = require("@src/scheduler")
 local task = task or require("@lute/task")
 
 type State = "busy" | "ok"
@@ -13,8 +14,6 @@ when created, the async node gets immediately evaluated similar to an effect.
 unlike an effect though, all evaluations are deferred since we make the assumption
 that async yields every single time.
 ]]
-
-local cancel = task.cancel or coroutine.close
 
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local reactive_node: graph.ReactiveNode<any>
@@ -54,7 +53,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 
 		graph.push_cleanup(reactive_node, function()
-			cancel(thread)
+			scheduler.cancel(thread)
 		end)
 	end
 

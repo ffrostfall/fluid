@@ -1,5 +1,8 @@
+local exception = require("./exception")
 local graph = require("../reactive/graph")
+local logging = require("@src/logging")
 local no_yield = require("./no_yield")
+local safe_call = require("./safe_call")
 local scheduler = require("../scheduler")
 
 local dev_mode = true
@@ -7,13 +10,21 @@ local dev_mode = true
 local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()
 
-	local initial_value
-	if dev_mode then
-		initial_value = no_yield(func, 0)
-	else
-		initial_value = func(0)
+	local success, res_value = safe_call(dev_mode, func, 0)
+
+	if not success then
+		if exception.is_thread_unwrap(res_value) then
+			local thread, yielded = exception.unwrap_ephemeral_thread_err(res_value)
+
+			if yielded then
+				logging.warn_traceback(logging.errors.interval_user_yielded(), thread)
+			else
+				logging.warn_traceback(logging.errors.interval_user_errored(), thread)
+			end
+		end
 	end
-	local node = graph.create_source_node(initial_value)
+
+	local node = graph.create_source_node(res_value)
 	local last_eval = offset and -offset or 0
 
 	local function on_render(dt: number)

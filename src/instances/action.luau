@@ -11,7 +11,7 @@ local action = {
 	metatable = action_metatable_symbol,
 }
 
-function action.is_action(action: unknown | Identity): boolean
+function action.is_action(action): boolean
 	return type(action) == "table" and action.__ACTION_SYMBOL ~= nil
 end
 

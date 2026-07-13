@@ -56,4 +56,14 @@ Self explanatory.
 
 ## nil_in_deferred
 
-The internal graph r
+## recursive_dependency_depeqco
+
+## co_eq_node_state
+
+## dep_state_eq_co
+
+## scope_assertion_failed
+
+## stable_parent_assertion_failed
+
+## invalid_parent_scope
