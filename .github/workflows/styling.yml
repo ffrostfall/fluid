@@ -1,31 +1,31 @@
 name: Style CI
 
 permissions:
-  actions: write
+    actions: write
 
 defaults:
-  run:
-    shell: bash
+    run:
+        shell: bash
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
 
 jobs:
-  styling:
-    name: Styling
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, 'skip ci') }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          repository: ffrostfall/fluid
+    styling:
+        name: Styling
+        runs-on: ubuntu-latest
+        if: ${{ !contains(github.event.head_commit.message, 'skip ci') }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  repository: ffrostfall/fluid
 
-      - name: Setup Rokit
-        uses: CompeyDev/setup-rokit@v0.1.0
+            - name: Setup Rokit
+              uses: CompeyDev/setup-rokit@v0.1.0
 
-      - name: Run styling
-        run: lune run styling
+            - name: Run styling
+              run: lute styling

@@ -1,6 +1,6 @@
 [tools]
-rojo = "rojo-rbx/rojo@7.5.1"
+rojo = "rojo-rbx/rojo@7.7.0"
 wally = "UpliftGames/wally@0.3.2"
-stylua = "JohnnyMorganz/StyLua@2.1.0"
-luaulsp = "JohnnyMorganz/luau-lsp@1.52.1"
+stylua = "JohnnyMorganz/StyLua@2.5.2"
+luaulsp = "JohnnyMorganz/luau-lsp@1.68.1"
 lute = "luau-lang/lute@1.0.1-nightly.20260701"

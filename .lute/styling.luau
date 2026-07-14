@@ -1,12 +1,12 @@
-local process = require("@lune/process")
+local process = require("@lute/process")
 
-local directories = { ".lune", "src", "tests" }
+local cmd = { "stylua", ".lute", "src", "tests" }
 
 -- kinda cursed but, easiest way to do this.
-table.insert(directories, "--check")
+table.insert(cmd, "--check")
 
-local result = process.exec("stylua", directories, {
-	stdio = "forward",
+local result = process.run(cmd, {
+	stdio = "inherit",
 })
 
-process.exit(result.code)
+process.exit(result.exitcode)
