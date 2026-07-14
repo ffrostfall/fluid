@@ -77,7 +77,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 
 	local node = graph.create_source_node(res)
 	local last_eval = offset and -offset or 0
-	local last_ok = false
+	local last_ok = true
 
 	local function on_render(dt: number)
 		if hz ~= nil then
@@ -90,8 +90,12 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 		end
 
 		if not last_ok then
-			local ok, res =
-				reactive_fn_calls.no_yield_call(func, silent_interval_err_handler, interval_yield_handler, dt)
+			local ok, res = reactive_fn_calls.no_yield_call(func, silent_interval_err_handler, function()
+				return exception.new({
+					kind = "yielded",
+					trace = debug.traceback(logging.errors.interval_user_yielded(), 2),
+				})
+			end, dt)
 
 			if ok then
 				last_ok = true
