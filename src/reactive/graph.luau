@@ -310,7 +310,6 @@ local function graph_evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
 
 		return node.cached_value
 	elseif coroutine.running() == node.state then
-		print(node.trace)
 		error(exception.new({
 			kind = "fluid",
 			trace = debug.traceback(logging.errors.graph_recursive_dependency_coeqnost()),
@@ -376,7 +375,6 @@ function graph.create_reactive_node<T>(
 	local node: ReactiveNode<T> = {
 		parent = parent,
 		last_evaluation = bump_version(),
-		trace = debug.traceback(),
 
 		effect = effect,
 		evaluation = evaluation,
