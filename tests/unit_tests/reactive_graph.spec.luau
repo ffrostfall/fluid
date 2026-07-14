@@ -473,6 +473,8 @@ local function tests()
 				end)
 
 				coroutine.resume(thread)
+
+				print(thread, coroutine.status(thread))
 				CHECK(count == 4)
 			end
 
@@ -727,7 +729,7 @@ local function tests()
 
 				local data = for_keys(items, function(value)
 					updates += 1
-					return value, 0
+					return value
 				end)
 
 				CHECK(#data() == 1)
@@ -940,7 +942,7 @@ local function tests()
 
 				local data = for_values(items, function(value)
 					updates += 1
-					return value, 0
+					return value
 				end)
 
 				CHECK(#data() == 1)
@@ -1174,27 +1176,25 @@ local function tests()
 		end)
 	)
 
-	-- TEST(
-	-- 	"no yield in reactive scopes",
-	-- 	wrap_root(function()
-	-- 		do
-	-- 			CASE("works")
-	-- 			print("Testing")
+	TEST(
+		"no yield in reactive scopes",
+		wrap_root(function()
+			do
+				CASE("works")
 
-	-- 			local did_yield = false
-	-- 			hooks.logging.on_warn(function(text)
-	-- 				did_yield = string.find(text, "yield") ~= nil
-	-- 			end)
+				local did_yield = false
+				hooks.logging.on_warn(function(text)
+					did_yield = string.find(text, "yield") ~= nil
+				end)
 
-	-- 			fluid.effect(function()
-	-- 				coroutine.yield()
-	-- 				print("dies")
-	-- 			end)
+				fluid.effect(function()
+					coroutine.yield()
+				end)
 
-	-- 			CHECK(did_yield == true)
-	-- 		end
-	-- 	end)
-	-- )
+				CHECK(did_yield == true)
+			end
+		end)
+	)
 end
 
 return tests

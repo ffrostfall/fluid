@@ -21,7 +21,6 @@ function scheduler_interface.wait(time: number?): number
 end
 
 function scheduler_interface.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
-	print("calling fluid delay: " .. debug.traceback())
 	local thread = coroutine.create(fn)
 	local data: { [any]: any } = table.pack(...)
 	data.resume = step_tick + n
@@ -48,7 +47,7 @@ local function step_threads(delta_time: number)
 			end
 
 			if not ok then
-				logging.warn(`uncaught err: {err.trace} origin: {data.trace}`)
+				print(`error exploded to top level: {err.trace}`)
 			end
 		else
 			waiting_threads[thread] = data

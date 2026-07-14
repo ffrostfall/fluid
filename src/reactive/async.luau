@@ -20,14 +20,14 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local value: graph.ReactiveNode<T> = graph.create_reactive_node(
 		graph.assert_stable_parent(),
 		function()
-			graph.defer_node(reactive_node)
+			graph.defer_node(reactive_node :: any)
 		end :: any,
 		"async"
 	)
 	local state: graph.SourceNode<State> = graph.create_source_node("ok") :: any
 
 	local function set(new: T)
-		graph.update_node<<T>>(value, new)
+		graph.update_node(value :: any, new)
 	end
 
 	local function update()
@@ -40,6 +40,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 			graph.destroy_owned(value)
 
 			value.state = coroutine.running()
+
 			local ok, call = graph.run_as(value, callback, set)
 
 			if ok then

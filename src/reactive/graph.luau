@@ -103,14 +103,14 @@ local function set_scope(node: Node<any>?)
 	processing_node[coroutine.running()] = node
 end
 
-local function run_as_unsafe<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): T
+local function run_as_unsafe<T..., U...>(node: Node<any>?, fn: (U...) -> T..., ...: U...): T...
 	local previous_processing = get_scope()
 	set_scope(node)
 
-	local a = fn(...)
+	local a, b = fn(...)
 
 	set_scope(previous_processing)
-	return a
+	return a, b
 end
 
 local function is_similar(a: unknown, b: unknown): boolean
@@ -185,7 +185,7 @@ end
 
 local graph = {}
 
-local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): (boolean, T)
+local function graph_run_as<T..., U...>(node: Node<any>?, fn: (U...) -> T..., ...: U...): (boolean, T...)
 	local previous_processing = get_scope()
 	set_scope(node)
 
@@ -193,17 +193,17 @@ local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U..
 
 	local yielding_errors = dev_mode and not is_async_node
 
-	local ok, call
+	local ok, a, b
 	if yielding_errors then
-		ok, call = reactive_fn_calls.call(fn, effect_err, ...)
-		-- ok, call = reactive_fn_calls.no_yield_call(run_as_unsafe, effect_err, effect_yield, node, fn, ...)
+		-- ok, call = reactive_fn_calls.call(fn, effect_err, ...)
+		ok, a, b = reactive_fn_calls.no_yield_call(run_as_unsafe, effect_err, effect_yield, node, fn, ...)
 	else
-		ok, call = reactive_fn_calls.call(fn, effect_err, ...)
+		ok, a, b = reactive_fn_calls.call(fn, effect_err, ...)
 	end
 
 	set_scope(previous_processing)
 
-	return ok, call
+	return ok, a, b
 end
 
 local function graph_defer_node<T>(node: ReactiveNode<T>)
@@ -279,7 +279,8 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 
 		return node.cached_value
 	else
-		error("idk, is this supposed to error?")
+		logging.warn(res.trace)
+		error(res)
 	end
 end
 
@@ -311,7 +312,7 @@ local function graph_evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
 	elseif coroutine.running() == node.state then
 		error(exception.new({
 			kind = "fluid",
-			trace = debug.traceback(logging.errors.graph_recursive_dependency_coeqnost(), 1),
+			trace = debug.traceback(logging.errors.graph_recursive_dependency_coeqnost()),
 		}))
 	elseif type(node.state) == "thread" then
 		--todo: should this be allowed?

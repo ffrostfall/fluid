@@ -196,8 +196,6 @@ local function tests()
 				CHECK(success == false)
 				if not success then
 				-- stylua: ignore
-				print("HEY HEY IM HERE", err)
-					print("ok.")
 					CHECK(string.find(err, "yield") == nil)
 					CHECK(string.find(err, "hello world") ~= nil)
 				end
