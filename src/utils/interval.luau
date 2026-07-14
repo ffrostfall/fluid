@@ -56,7 +56,7 @@ local function silent_interval_err_handler(err: unknown): exception.Identity
 end
 
 local function interval_yield_handler(thread: thread): exception.Identity
-	local formatted_trace = debug.traceback(thread, logging.errors.interval_user_yielded(), 3)
+	local formatted_trace = debug.traceback(thread, logging.errors.interval_user_yielded(), 1)
 
 	logging.warn(formatted_trace)
 

@@ -474,7 +474,6 @@ local function tests()
 
 				coroutine.resume(thread)
 
-				print(thread, coroutine.status(thread))
 				CHECK(count == 4)
 			end
 
@@ -1187,11 +1186,37 @@ local function tests()
 					did_yield = string.find(text, "yield") ~= nil
 				end)
 
-				fluid.effect(function()
+				pcall(fluid.effect, function()
 					coroutine.yield()
 				end)
 
+				hooks.logging.on_warn(nil)
 				CHECK(did_yield == true)
+			end
+
+			do
+				CASE("non-destructive erroring on yield")
+
+				local src = fluid.source(1)
+				local run_count = 0
+
+				pcall(function()
+					fluid.effect(function()
+						run_count += 1
+						if src() == 2 then
+							coroutine.yield()
+						end
+					end)
+				end)
+
+				CHECK(src() == 1)
+
+				pcall(function()
+					src(2)
+				end)
+
+				CHECK(src() == 2)
+				CHECK(run_count == 2)
 			end
 		end)
 	)

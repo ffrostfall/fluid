@@ -67,7 +67,7 @@ TEST(
 	end)
 )
 
-TEST("schedular.delay()", function()
+TEST("scheduler.delay()", function()
 	do
 		CASE("works")
 
@@ -85,7 +85,7 @@ TEST("schedular.delay()", function()
 	end
 
 	do
-		CASE("schedular.delay() is always resumped next step")
+		CASE("scheduler.delay() is always resumped next step")
 
 		local triggered = false
 		scheduler.delay(0, function()
@@ -98,7 +98,7 @@ TEST("schedular.delay()", function()
 	end
 
 	do
-		CASE("schedular.delay() is cancelable")
+		CASE("scheduler.delay() is cancelable")
 
 		local triggered = false
 		local thread = scheduler.delay(0, function()
@@ -117,7 +117,7 @@ TEST("schedular.delay()", function()
 	end
 end)
 
-TEST("schedular.wait()", function()
+TEST("scheduler.wait()", function()
 	do
 		CASE("works")
 
@@ -143,7 +143,7 @@ TEST("schedular.wait()", function()
 	end
 
 	do
-		CASE("schedular.wait() is cancelable")
+		CASE("scheduler.wait() is cancelable")
 
 		local triggered = false
 		local thread = task.spawn(function()

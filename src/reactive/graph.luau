@@ -198,7 +198,7 @@ local function graph_run_as<T..., U...>(node: Node<any>?, fn: (U...) -> T..., ..
 		-- ok, call = reactive_fn_calls.call(fn, effect_err, ...)
 		ok, a, b = reactive_fn_calls.no_yield_call(run_as_unsafe, effect_err, effect_yield, node, fn, ...)
 	else
-		ok, a, b = reactive_fn_calls.call(fn, effect_err, ...)
+		ok, a, b = xpcall(fn, effect_err, ...)
 	end
 
 	set_scope(previous_processing)
@@ -353,7 +353,7 @@ local function invalidate<T>(node: ReactiveNode<T> | SourceNode<T>)
 			run_as_unsafe(nil, graph_evaluate_node, dependent)
 		end
 
-		run_as_unsafe(nil, graph_evaluate_node, node)
+		graph_run_as(nil, graph_evaluate_node, node)
 	end
 	table.clear(pending_eval)
 end
