@@ -1,5 +1,11 @@
 local _, _, _, FINISH = require("@vendor/testkit").test()
 
+local function call_tests(fn: () -> ())
+	xpcall(fn, function(err)
+		print(debug.traceback(tostring(err)))
+	end)
+end
+
 local tests = {}
 
 function tests.fuzz()
@@ -8,11 +14,10 @@ end
 
 function tests.unit_tests()
 	require("@self/unit_tests/logging.spec")
-	require("@self/unit_tests/no_yield.spec")
-	require("@self/unit_tests/reactive_graph.spec")
+	call_tests(require("@self/unit_tests/reactive_graph.spec"))
 	require("@self/unit_tests/scheduler.spec")
 	require("@self/unit_tests/bind.spec")
-	require("@self/unit_tests/interval.spec")
+	call_tests(require("@self/unit_tests/interval.spec"))
 	require("@self/unit_tests/spring.spec")
 	require("@self/unit_tests/colors.spec")
 

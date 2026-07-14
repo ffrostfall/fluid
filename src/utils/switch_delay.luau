@@ -36,7 +36,7 @@ local function switch<Key, Result>(condition: () -> Key)
 
 		local function destroy_delayed(p: SwitchGraph<Result>, c: Condition<Result>)
 			destroy(p, c)
-			graph.update_source_node(update_counter, update_counter.cached_value + 1)
+			graph.update_node(update_counter, update_counter.cached_value + 1)
 		end
 
 		local function update(p: SwitchGraph<Result>)
@@ -56,7 +56,7 @@ local function switch<Key, Result>(condition: () -> Key)
 			if previous_effect and not p.threads[previous_effect] and p.scopes[previous_effect] then
 				local delay_by = p.delay_by[previous_effect]
 
-				graph.update_source_node(p.active_nodes[previous_effect], false)
+				graph.update_node(p.active_nodes[previous_effect], false)
 
 				if delay_by then
 					p.threads[previous_effect] = scheduler.delay(delay_by, destroy_delayed, p, previous_effect)
@@ -77,7 +77,7 @@ local function switch<Key, Result>(condition: () -> Key)
 			if thread then
 				scheduler.cancel(thread)
 				p.threads[active_effect] = nil
-				graph.update_source_node(p.active_nodes[active_effect], true)
+				graph.update_node(p.active_nodes[active_effect], true)
 				return p
 			end
 

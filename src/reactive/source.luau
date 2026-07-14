@@ -19,7 +19,7 @@ local function source<T>(initial_value: T): types.Source<T>
 
 		if has_value then
 			-- setting the source node
-			graph.update_source_node(node, value)
+			graph.update_node(node, value)
 			return value
 		else
 			-- dependency, returning the value

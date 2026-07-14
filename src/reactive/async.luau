@@ -27,12 +27,12 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local state: graph.SourceNode<State> = graph.create_source_node("ok") :: any
 
 	local function set(new: T)
-		graph.update_source_node<<T>>(value, new)
+		graph.update_node<<T>>(value, new)
 	end
 
 	local function update()
 		assert(reactive_node, "reactive node does not exist")
-		graph.update_source_node(state, "busy")
+		graph.update_node(state, "busy")
 
 		-- manually set the node to be busy
 		local thread = task.spawn(function()
@@ -40,15 +40,15 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 			graph.destroy_owned(value)
 
 			value.state = coroutine.running()
-			local call = graph.run_as(value, callback, set)
+			local ok, call = graph.run_as(value, callback, set)
 
-			if call then
+			if ok then
 				set(call)
 			else
-				logging.warn(`async effect error: {call.err} {call.trace}`)
+				logging.warn(call.trace)
 			end
 
-			graph.update_source_node(state, "ok")
+			graph.update_node(state, "ok")
 			value.state = "clean"
 		end)
 

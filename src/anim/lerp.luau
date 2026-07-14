@@ -38,7 +38,7 @@ local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 local lerp = {}
 
 function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
-	local output = graph.create_source_node(read(goal))
+	local output: graph.SourceNode<T> = graph.create_source_node(read(goal))
 
 	local function effect()
 		active_animations[output] = {
@@ -72,7 +72,7 @@ function lerp.step(delta_time: number)
 		end
 
 		local interpolated = fn(data.start, data.goal, t)
-		graph.update_source_node(output, interpolated)
+		graph.update_node(output, interpolated)
 	end
 end
 

@@ -38,7 +38,7 @@ local function indexes<K, VI, VO>(
 
 	local function destroy_delayed(key: K)
 		destroy(key)
-		graph.update_source_node(useless_dependency, useless_dependency.cached_value + 1)
+		graph.update_node(useless_dependency, useless_dependency.cached_value + 1)
 	end
 
 	local function update(): { VO }
@@ -52,7 +52,7 @@ local function indexes<K, VI, VO>(
 			end
 			local node = output_active[key]
 			local delay_by = output_delays[key]
-			graph.update_source_node(node, false)
+			graph.update_node(node, false)
 
 			if delay_by then
 				destruction_threads[key] = scheduler.delay(delay_by, destroy_delayed, key)
@@ -68,11 +68,11 @@ local function indexes<K, VI, VO>(
 			if destruction_threads[key] then
 				scheduler.cancel(destruction_threads[key])
 				destruction_threads[key] = nil
-				graph.update_source_node(output_active[key], true)
+				graph.update_node(output_active[key], true)
 			end
 
 			if source_node then -- changed
-				graph.update_source_node(source_node, value)
+				graph.update_node(source_node, value)
 			else -- new
 				local value_node = graph.create_source_node<<VI>>(value)
 				local output_node = graph.create_stable_node(child_parent)

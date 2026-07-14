@@ -1,6 +1,8 @@
-local no_yield = require("../utils/no_yield")
+local exception = require("@src/utils/exception")
+local logging = require("@src/logging")
+local reactive_fn_calls = require("@src/utils/reactive_fn_calls")
 local scheduler = require("../scheduler")
-local types_2 = require("./types")
+local types = require("./types")
 
 local dev_mode = true
 local deferred_thread: thread? = nil
@@ -41,7 +43,7 @@ export type ReactiveNode<T> = {
 	children: { Node<T> },
 
 	--- Describes the effect to run to compute the result of this node.
-	effect: types_2.Effect<T> | false,
+	effect: types.Effect<T> | false,
 	-- async is similar to eager, but unlike eager does not actually update the
 	-- value. this is necessary to support a proper async reactive primitive
 	evaluation: "eager" | "deferred" | "lazy" | "dead" | "async",
@@ -155,24 +157,53 @@ local function node_destroy_owned<T>(node: Node<T>)
 	table.clear(node.children)
 end
 
+local function effect_yield(thread: thread)
+	return exception.new({
+		kind = "yielded",
+		trace = debug.traceback(thread, logging.errors.graph_effect_yielded()),
+	})
+end
+
+local function effect_err(err: unknown): exception.Identity
+	if exception.is(err) then
+		local new_err: exception.Identity = err :: any
+		return new_err
+	elseif type(err) == "string" then
+		return exception.new({
+			kind = "invoked",
+			trace = debug.traceback(logging.errors.graph_effect_errored(tostring(err))),
+			err = err,
+		})
+	else
+		return exception.new({
+			kind = "uncaught",
+			trace = debug.traceback(logging.errors.unknown(tostring(err))),
+			err = tostring(err),
+		})
+	end
+end
+
 local graph = {}
 
-local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): T
+local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): (boolean, T)
 	local previous_processing = get_scope()
 	set_scope(node)
 
-	local no_yield_check = dev_mode and (node == nil or not node.effect or node["evaluation"] ~= "async")
+	local is_async_node = (node and node.effect and node.evaluation == "async")
 
-	local call
-	if no_yield_check then
-		call = no_yield(graph.run_as_unsafe, node, fn, ...)
+	local yielding_errors = dev_mode and not is_async_node
+
+	local ok, call
+	if yielding_errors then
+		ok, call = reactive_fn_calls.call(fn, effect_err, ...)
+		-- ok, call = reactive_fn_calls.no_yield_call(run_as_unsafe, effect_err, effect_yield, node, fn, ...)
 	else
-		call = fn(...)
+		ok, call = reactive_fn_calls.call(fn, effect_err, ...)
 	end
 
 	set_scope(previous_processing)
 
-	return call
+	return ok, call
 end
 
 local function graph_defer_node<T>(node: ReactiveNode<T>)
@@ -231,7 +262,7 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 
 	node.state = coroutine.running()
 	local previous_result = node.cached_value
-	local success, res = pcall(graph_run_as, node, node.effect, previous_result)
+	local success, res = graph_run_as(node, node.effect, previous_result)
 	-- we mark it as clean and bump the evaluation value since we don't
 	-- want to re-run the node even if it errored
 	node.state = "clean"
@@ -248,7 +279,7 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 
 		return node.cached_value
 	else
-		error(`effect error: {res}`)
+		error("idk, is this supposed to error?")
 	end
 end
 
@@ -278,7 +309,10 @@ local function graph_evaluate_node<T>(node: SourceNode<T> | ReactiveNode<T>): T
 
 		return node.cached_value
 	elseif coroutine.running() == node.state then
-		error("this creates a recursive dependency, which can result in creating a infinite loop.")
+		error(exception.new({
+			kind = "fluid",
+			trace = debug.traceback(logging.errors.graph_recursive_dependency_coeqnost(), 1),
+		}))
 	elseif type(node.state) == "thread" then
 		--todo: should this be allowed?
 		return node.cached_value
@@ -325,9 +359,7 @@ end
 
 function graph.flush_deferred_nodes()
 	for _, node in deferred_nodes do
-		xpcall(graph_evaluate_node, function()
-			print("error handling!")
-		end, node)
+		graph_evaluate_node(node)
 	end
 
 	table.clear(deferred_nodes)
@@ -335,7 +367,7 @@ end
 
 function graph.create_reactive_node<T>(
 	parent: Node<T> | false,
-	effect: types_2.Effect<T> | false,
+	effect: types.Effect<T> | false,
 	evaluation: "eager" | "deferred" | "lazy" | "async",
 	cached_value: T
 ): ReactiveNode<T>

@@ -213,7 +213,7 @@ end
 function spring_file.step(delta_time: number)
 	for spring_state, node in active_springs do
 		step_spring(spring_state, delta_time)
-		graph.update_source_node(node, spring_state.unpacked_value)
+		graph.update_node(node, spring_state.unpacked_value)
 	end
 end
 

@@ -15,16 +15,16 @@ local logging = {
 	errors = {},
 }
 
+function logging.fmt(text: string): string
+	return format(text)
+end
+
 function logging.warn(text: string)
 	logging.__warn_facade(format(text))
 end
 
 function logging.error(text: string)
 	error(format(text))
-end
-
-function logging.error_traceback(text: string, thread: thread)
-	error(debug.traceback(thread, format(text), 2))
 end
 
 function logging.warn_traceback(text: string, thread: thread)
@@ -56,23 +56,23 @@ function logging.errors.root_already_destroyed()
 end
 
 function logging.errors.root_user_errored()
-	return "root user error"
+	return "Root function errored [root_fn_error]"
 end
 
 function logging.errors.interval_user_yielded()
-	return "interval user yield"
+	return "Interval yielded [interval_fn_yielded]"
 end
 
-function logging.errors.interval_user_errored()
-	return "interval user error"
+function logging.errors.interval_user_errored(err: string)
+	return `Interval function errored: {err} [interval_fn_errored]`
 end
 
-function logging.errors.graph_effect_errored()
-	return "graph effect error"
+function logging.errors.graph_effect_errored(err: string)
+	return `Reactive function errored {err} [effect_fn_errored]`
 end
 
 function logging.errors.graph_effect_yielded()
-	return "graph effect yield"
+	return "Reactive effect function yielded [effect_fn_yielded]"
 end
 
 function logging.errors.graph_nil_in_deferred()
@@ -97,6 +97,10 @@ end
 
 function logging.errors.graph_cant_call_while_parent_scope_reactive(func_name: string)
 	return `Can't call fluid.{func_name} while the current scope is reactive`
+end
+
+function logging.errors.unknown(str: string)
+	return `Unknown: {str}`
 end
 
 function logging.errors.fluid_assert()

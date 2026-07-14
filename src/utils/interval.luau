@@ -1,31 +1,83 @@
 local exception = require("./exception")
 local graph = require("../reactive/graph")
 local logging = require("@src/logging")
-local no_yield = require("./no_yield")
-local safe_call = require("./safe_call")
+local reactive_fn_calls = require("./reactive_fn_calls")
 local scheduler = require("../scheduler")
 
 local dev_mode = true
 
+local function interval_err_handler(err: unknown): exception.Identity
+	if exception.is(err) then
+		local new_err: exception.Identity = err :: any
+
+		logging.warn(new_err.trace)
+
+		return new_err
+	elseif type(err) == "string" then
+		local formatted_trace = debug.traceback(logging.errors.interval_user_errored(err), 3)
+
+		logging.warn(formatted_trace)
+
+		return exception.new({
+			kind = "invoked",
+			err = err,
+			trace = formatted_trace,
+		})
+	else
+		local formatted_trace = debug.traceback(logging.errors.unknown(err))
+
+		logging.warn(formatted_trace)
+
+		return exception.new({
+			kind = "uncaught",
+			err = tostring(err),
+			trace = formatted_trace,
+		})
+	end
+end
+
+local function silent_interval_err_handler(err: unknown): exception.Identity
+	if exception.is(err) then
+		local new_err: exception.Identity = err :: any
+		return new_err
+	elseif type(err) == "string" then
+		return exception.new({
+			kind = "invoked",
+			err = err,
+			trace = debug.traceback(logging.errors.interval_user_errored(err), 3),
+		})
+	else
+		return exception.new({
+			kind = "uncaught",
+			err = tostring(err),
+			trace = debug.traceback(logging.errors.unknown(err)),
+		})
+	end
+end
+
+local function interval_yield_handler(thread: thread): exception.Identity
+	local formatted_trace = debug.traceback(thread, logging.errors.interval_user_yielded(), 3)
+
+	logging.warn(formatted_trace)
+
+	return exception.new({
+		kind = "yielded",
+		trace = formatted_trace,
+	})
+end
+
 local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()
 
-	local success, res_value = safe_call(dev_mode, func, 0)
+	local ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, 0)
 
-	if not success then
-		if exception.is_thread_unwrap(res_value) then
-			local thread, yielded = exception.unwrap_ephemeral_thread_err(res_value)
-
-			if yielded then
-				logging.warn_traceback(logging.errors.interval_user_yielded(), thread)
-			else
-				logging.warn_traceback(logging.errors.interval_user_errored(), thread)
-			end
-		end
+	if not ok then
+		logging.error(res.trace)
 	end
 
-	local node = graph.create_source_node(res_value)
+	local node = graph.create_source_node(res)
 	local last_eval = offset and -offset or 0
+	local last_ok = false
 
 	local function on_render(dt: number)
 		if hz ~= nil then
@@ -37,14 +89,24 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 			last_eval = 0
 		end
 
-		local new_value
-		if not dev_mode then
-			new_value = func(dt)
-		else
-			new_value = no_yield(func, dt)
+		if not last_ok then
+			local ok, res =
+				reactive_fn_calls.no_yield_call(func, silent_interval_err_handler, interval_yield_handler, dt)
+
+			if ok then
+				last_ok = true
+				graph.update_node(node, res)
+			end
+			return
 		end
 
-		graph.update_source_node(node, new_value)
+		local ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, dt)
+
+		if ok then
+			graph.update_node(node, res)
+		else
+			last_ok = false
+		end
 	end
 
 	local disconnect = scheduler.on_render(on_render)
