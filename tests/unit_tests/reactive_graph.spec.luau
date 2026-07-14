@@ -728,13 +728,14 @@ local function tests()
 
 				local data = for_keys(items, function(value)
 					updates += 1
-					return value
+					return value, 0
 				end)
 
 				CHECK(#data() == 1)
 				items({})
 				CHECK(#data() == 1)
 				CHECK(updates == 1)
+
 				step_scheduler()
 				items({ 1 }) -- should cancel thread
 				-- we need to evaluate for_keys again so it can cancel the thread.
@@ -941,7 +942,7 @@ local function tests()
 
 				local data = for_values(items, function(value)
 					updates += 1
-					return value
+					return value, 0
 				end)
 
 				CHECK(#data() == 1)
