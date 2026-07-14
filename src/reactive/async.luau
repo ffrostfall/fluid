@@ -1,7 +1,6 @@
 local graph = require("./graph")
 local logging = require("../logging")
-local scheduler = require("@src/scheduler")
-local testkit = require("@vendor/testkit")
+local scheduler = require("../scheduler")
 local task = task or require("@lute/task")
 
 type State = "busy" | "ok"

@@ -1,10 +1,8 @@
 local exception = require("./exception")
 local graph = require("../reactive/graph")
-local logging = require("@src/logging")
+local logging = require("../logging")
 local reactive_fn_calls = require("./reactive_fn_calls")
 local scheduler = require("../scheduler")
-
-local dev_mode = true
 
 local function interval_err_handler(err: unknown): exception.Identity
 	if exception.is(err) then

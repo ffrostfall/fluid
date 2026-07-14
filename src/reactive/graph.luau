@@ -1,6 +1,6 @@
-local exception = require("@src/utils/exception")
-local logging = require("@src/logging")
-local reactive_fn_calls = require("@src/utils/reactive_fn_calls")
+local exception = require("../utils/exception")
+local logging = require("../logging")
+local reactive_fn_calls = require("../utils/reactive_fn_calls")
 local scheduler = require("../scheduler")
 local types = require("./types")
 
