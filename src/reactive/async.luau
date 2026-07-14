@@ -1,6 +1,7 @@
 local graph = require("./graph")
 local logging = require("../logging")
 local scheduler = require("@src/scheduler")
+local testkit = require("@vendor/testkit")
 local task = task or require("@lute/task")
 
 type State = "busy" | "ok"
@@ -17,14 +18,8 @@ that async yields every single time.
 
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local reactive_node: graph.ReactiveNode<any>
-	local value: graph.ReactiveNode<T> = graph.create_reactive_node(
-		graph.assert_stable_parent(),
-		function()
-			graph.defer_node(reactive_node :: any)
-		end :: any,
-		"async"
-	)
-	local state: graph.SourceNode<State> = graph.create_source_node("ok") :: any
+	local value: graph.SourceNode<T> = graph.create_source_node(nil)
+	local state: graph.SourceNode<State> = graph.create_source_node("busy") :: any
 
 	local function set(new: T)
 		graph.update_node(value :: any, new)
@@ -36,12 +31,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 
 		-- manually set the node to be busy
 		local thread = task.spawn(function()
-			graph.flush_cleanups(value)
-			graph.destroy_owned(value)
-
-			value.state = coroutine.running()
-
-			local ok, call = graph.run_as(value, callback, set)
+			local ok, call = graph.run_as(reactive_node, callback, set)
 
 			if ok then
 				set(call)
@@ -50,7 +40,6 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 			end
 
 			graph.update_node(state, "ok")
-			value.state = "clean"
 		end)
 
 		graph.push_cleanup(reactive_node, function()
@@ -58,7 +47,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 	end
 
-	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "deferred")
+	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "async")
 
 	graph.evaluate_node(reactive_node)
 
