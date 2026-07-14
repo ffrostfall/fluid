@@ -1,5 +1,5 @@
 local exception = require("./exception")
-local scheduler = require("@src/scheduler")
+local scheduler = require("../scheduler")
 
 local reactive_fn_calls = {}
 
