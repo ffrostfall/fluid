@@ -350,10 +350,17 @@ local function invalidate<T>(node: ReactiveNode<T> | SourceNode<T>)
 
 	for _, node in pending_eval do
 		for _, dependent in node.depending_on do
-			run_as_unsafe(nil, graph_evaluate_node, dependent)
+			local success, value = graph_run_as(nil, graph_evaluate_node, dependent)
+
+			if not success then
+				logging.warn(value.trace)
+			end
 		end
 
-		graph_run_as(nil, graph_evaluate_node, node)
+		local success, value = graph_run_as(nil, graph_evaluate_node, node)
+		if not success then
+			logging.warn(value.trace)
+		end
 	end
 	table.clear(pending_eval)
 end

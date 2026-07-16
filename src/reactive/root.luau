@@ -19,14 +19,14 @@ local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup,
 
 	local results = {}
 
-	local success, result = pcall(graph.run_as, node, function(destroy)
+	local success, result = graph.run_as(node, function(destroy)
 		results = { fn(destroy) }
 		return nil
 	end, destroy)
 
 	if not success then
 		destroy()
-		error(result)
+		error(result.trace)
 	end
 
 	-- luau type issue w generic type packs

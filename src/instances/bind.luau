@@ -218,7 +218,7 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 		end
 
 		if pairing.tag == "property" then
-			scheduler.defer(set_property, inst, pairing.name, pairing.value)
+			set_property(inst, pairing.name, pairing.value)
 		elseif pairing.tag == "reactive_property" then
 			bind_property(inst, pairing.name, pairing.value)
 		elseif pairing.tag == "event" then
