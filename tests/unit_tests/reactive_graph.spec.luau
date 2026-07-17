@@ -645,13 +645,13 @@ local function tests()
 				local scope = graph.get_scope()
 
 				local input = source({ 1 })
-				local did_output_catch_me = false
+				-- local did_output_catch_me = false
 
-				hooks.logging.on_warn(function(err)
-					if string.find(err, "catch me") then
-						did_output_catch_me = true
-					end
-				end)
+				-- hooks.logging.on_warn(function(err)
+				-- 	if string.find(err, "catch me") then
+				-- 		did_output_catch_me = true
+				-- 	end
+				-- end)
 
 				local ok = pcall(function()
 					return for_keys(input, function()
@@ -662,7 +662,7 @@ local function tests()
 
 				hooks.logging.on_warn(nil)
 
-				CHECK(did_output_catch_me)
+				-- CHECK(did_output_catch_me)
 				CHECK(not ok)
 				CHECK(scope == graph.get_scope())
 			end
@@ -896,13 +896,13 @@ local function tests()
 				local n0 = graph.get_scope()
 				local input = source({ 1 })
 
-				local did_output_catch_me = false
+				-- local did_output_catch_me = false
 
-				hooks.logging.on_warn(function(err)
-					if string.find(err, "catch me") then
-						did_output_catch_me = true
-					end
-				end)
+				-- hooks.logging.on_warn(function(err)
+				-- 	if string.find(err, "catch me") then
+				-- 		did_output_catch_me = true
+				-- 	end
+				-- end)
 
 				local ok = pcall(function()
 					for_values(input, function()
@@ -912,7 +912,7 @@ local function tests()
 				end)
 
 				CHECK(not ok)
-				CHECK(did_output_catch_me == true)
+				-- CHECK(did_output_catch_me == true)
 
 				local n1 = graph.get_scope()
 
@@ -1182,17 +1182,12 @@ local function tests()
 			do
 				CASE("works")
 
-				local did_yield = false
-				hooks.logging.on_warn(function(text)
-					did_yield = string.find(text, "yield") ~= nil
-				end)
-
-				pcall(fluid.effect, function()
+				local success, err: any = pcall(fluid.effect, function()
 					coroutine.yield()
 				end)
 
-				hooks.logging.on_warn(nil)
-				CHECK(did_yield == true)
+				CHECK(not success)
+				CHECK(string.find(err, "yield") ~= nil)
 			end
 
 			do

@@ -279,8 +279,8 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 
 		return node.cached_value
 	else
-		logging.warn(res.trace)
-		error(res)
+		-- logging.warn(res.trace)
+		error(res.trace)
 	end
 end
 

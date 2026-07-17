@@ -111,7 +111,6 @@ local function step_spring<T>(state: SpringState, delta_time: number)
 		local next_velocity = (start_delta * vel_pos) + (start_vel * vel_vel)
 
 		if next_delta ~= next_delta or next_velocity ~= next_velocity then
-			warn("nan")
 			next_delta, next_velocity = 0, 0
 		end
 
