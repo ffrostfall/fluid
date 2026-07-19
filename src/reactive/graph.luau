@@ -104,12 +104,13 @@ local function set_scope(node: Node<any>?)
 end
 
 local function run_as_unsafe<T..., U...>(node: Node<any>?, fn: (U...) -> T..., ...: U...): T...
-	local previous_processing = get_scope()
-	set_scope(node)
+	local co = coroutine.running()
+	local old = processing_node[co]
+	processing_node[co] = node
 
 	local a, b = fn(...)
 
-	set_scope(previous_processing)
+	processing_node[co] = old
 	return a, b
 end
 
