@@ -19,15 +19,6 @@ local function bind_property<T>(inst: Instance, property: string, value: types.R
 	graph.evaluate_node(property_node)
 end
 
-local function bind_event(inst: Instance, event_name: string, func: <T...>(T...) -> ())
-	local event = (inst :: any)[event_name] :: RBXScriptSignal
-	local connection = event:Connect(func)
-
-	graph.push_cleanup(graph.assert_scope(), function()
-		connection:Disconnect()
-	end)
-end
-
 type Result = Instance | { Result } | () -> Result
 
 local function reactive_child_effect(
@@ -112,34 +103,39 @@ end
 
 local function bind(inst: Instance, props: { [unknown & number]: unknown })
 	for key: any, value: any in props do
-		local key_type, value_type = type(key), type(value)
+		local key_type, value_type = type(key), typeof(value)
 
-		local value_is_action = action.is_action(value)
+		if key_type == "string" then
+			local property_value = get_property(inst, key)
+			if typeof(property_value) ~= "RBXScriptSignal" then
+				if value_type == "function" then
+					bind_property(inst, key, value)
+				else
+					set_property(inst, key, value)
+				end
+			elseif value_type == "function" then
+				local connection = property_value:Connect(value)
 
-		if
-			key_type == "string"
-			and typeof(get_property(inst, key :: any)) ~= "RBXScriptSignal"
-			and value_type ~= "function"
-		then
-			set_property(inst, key, value)
-		elseif
-			key_type == "string"
-			and typeof(get_property(inst, key)) ~= "RBXScriptSignal"
-			and value_type == "function"
-		then
-			bind_property(inst, key, value)
-		elseif key_type == "number" and value_type == "table" and not value_is_action then
-			bind(inst, value)
-		elseif key_type == "number" and value_type == "function" then
-			bind_reactive_child(inst, value)
-		elseif key_type == "string" and typeof(get_property(inst, key)) == "RBXScriptSignal" then
-			bind_event(inst, key, value)
-		elseif value_type == "Instance" then
-			value.Parent = inst
-		elseif key_type == "number" and value_type == "table" and value_is_action then
-			value.callback(inst)
+				graph.push_cleanup(graph.assert_scope(), function()
+					connection:Disconnect()
+				end)
+			end
+		else
+			if value_type == "Instance" then
+				print("THIS CODE PATH")
+				value.Parent = inst
+			elseif value_type == "table" then
+				if value.__ACTION_SYMBOL == action.metatable then
+					value.callback(inst)
+				else
+					bind(inst, value)
+				end
+			elseif value_type == "function" then
+				bind_reactive_child(inst, value)
+			end
 		end
 	end
+	return inst
 end
 
 return bind
