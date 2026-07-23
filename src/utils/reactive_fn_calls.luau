@@ -13,7 +13,7 @@ function reactive_fn_calls.no_yield_call<U..., T...>(
 	local _, ok, a, b, c, d, e = coroutine.resume(co, func, err_handler, ...)
 
 	if coroutine.status(co) == "suspended" then
-		value = yield_handler(co)
+		local value = yield_handler(co)
 		scheduler.cancel(co)
 		return false, value
 	end
