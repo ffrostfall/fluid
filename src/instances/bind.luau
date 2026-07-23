@@ -1,48 +1,6 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
-local scheduler = require("../scheduler")
 local types = require("../reactive/types")
-
-type PropertyPair<T> = {
-	tag: "property",
-	name: string,
-	value: T,
-}
-
-type ReactivePropertyPair<T> = {
-	tag: "reactive_property",
-	name: string,
-	value: () -> T,
-}
-
-type EventPair<T...> = {
-	tag: "event",
-	name: string,
-	event: (T...) -> (),
-}
-
-type ActionPair = {
-	tag: "action",
-	action: action.Identity,
-}
-
-type ChildPair = {
-	tag: "child",
-	value: Instance,
-}
-
-type ReactiveChildPair = {
-	tag: "reactive_child",
-	value: () -> Instance | { Instance },
-}
-
-type Pair =
-	| ReactivePropertyPair<unknown>
-	| PropertyPair<unknown>
-	| EventPair<unknown>
-	| ReactiveChildPair
-	| ActionPair
-	| ChildPair
 
 local function set_property(inst: Instance, property: string, value: any)
 	(inst :: any)[property] = value
@@ -152,97 +110,36 @@ local function bind_reactive_child(inst: Instance, func: () -> Result)
 	graph.evaluate_node(property_node)
 end
 
-local function evaluate(inst: Instance, props: { [unknown & number]: unknown }, existing_array: { Pair }?): { Pair }
-	local resulting_array: { Pair } = existing_array or {}
+local function bind(inst: Instance, props: { [unknown & number]: unknown })
+	for key: any, value: any in props do
+		local key_type, value_type = type(key), type(value)
 
-	for key, value in props do
 		local value_is_action = action.is_action(value)
 
-		if type(key) == "number" and type(value) == "table" and value_is_action then
-			table.insert(resulting_array, {
-				tag = "action",
-				action = value,
-			})
-		elseif type(key) == "number" and type(value) == "table" and not value_is_action then
-			evaluate(inst, value :: any, resulting_array)
-		elseif type(key) == "number" and type(value) == "function" then
-			table.insert(resulting_array, {
-				tag = "reactive_child",
-				value = value,
-			})
-		elseif type(key) == "string" and typeof(get_property(inst, key)) == "RBXScriptSignal" then
-			table.insert(resulting_array, {
-				tag = "event",
-				name = key,
-				event = value,
-			})
-		elseif
-			type(key) == "string"
-			and typeof(get_property(inst, key)) ~= "RBXScriptSignal"
-			and type(value) == "function"
+		if
+			key_type == "string"
+			and typeof(get_property(inst, key :: any)) ~= "RBXScriptSignal"
+			and value_type ~= "function"
 		then
-			table.insert(resulting_array, {
-				tag = "reactive_property",
-				name = key,
-				value = value,
-			})
+			set_property(inst, key, value)
 		elseif
-			type(key) == "string"
+			key_type == "string"
 			and typeof(get_property(inst, key)) ~= "RBXScriptSignal"
-			and type(value) ~= "function"
+			and value_type == "function"
 		then
-			table.insert(resulting_array, {
-				tag = "property",
-				name = key,
-				value = value,
-			})
-		elseif typeof(value) == "Instance" then
-			table.insert(resulting_array, {
-				tag = "child",
-				value = value,
-			})
+			bind_property(inst, key, value)
+		elseif key_type == "number" and value_type == "table" and not value_is_action then
+			bind(inst, value)
+		elseif key_type == "number" and value_type == "function" then
+			bind_reactive_child(inst, value)
+		elseif key_type == "string" and typeof(get_property(inst, key)) == "RBXScriptSignal" then
+			bind_event(inst, key, value)
+		elseif value_type == "Instance" then
+			value.Parent = inst
+		elseif key_type == "number" and value_type == "table" and value_is_action then
+			value.callback(inst)
 		end
 	end
-
-	return resulting_array
-end
-
-local function bind(inst: Instance, props: { [unknown & number]: unknown })
-	local pairings = evaluate(inst, props)
-	local parent: (ReactivePropertyPair<Instance> | PropertyPair<Instance>)? = nil
-
-	for _, pairing in pairings do
-		if (pairing.tag == "property" or pairing.tag == "reactive_property") and pairing.name == "Parent" then
-			parent = pairing
-			continue
-		end
-
-		if pairing.tag == "property" then
-			set_property(inst, pairing.name, pairing.value)
-		elseif pairing.tag == "reactive_property" then
-			bind_property(inst, pairing.name, pairing.value)
-		elseif pairing.tag == "event" then
-			bind_event(inst, pairing.name, pairing.event)
-		elseif pairing.tag == "child" then
-			scheduler.defer(function()
-				pairing.value.Parent = inst
-			end)
-		elseif pairing.tag == "reactive_child" then
-			bind_reactive_child(inst, pairing.value)
-		elseif pairing.tag == "action" then
-			pairing.action.callback(inst)
-		else
-			error("unreachable")
-		end
-	end
-
-	if parent and parent.tag == "reactive_property" then
-		bind_property(inst, "Parent", parent.value)
-	elseif parent and parent.tag == "property" then
-		set_property(inst, "Parent", parent.value)
-	end
-
-	return inst
 end
 
 return bind
