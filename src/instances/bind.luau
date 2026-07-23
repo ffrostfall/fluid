@@ -122,10 +122,9 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 			end
 		else
 			if value_type == "Instance" then
-				print("THIS CODE PATH")
 				value.Parent = inst
 			elseif value_type == "table" then
-				if value.__ACTION_SYMBOL == action.metatable then
+				if value.__ACTION_SYMBOL == action.symbol then
 					value.callback(inst)
 				else
 					bind(inst, value)
