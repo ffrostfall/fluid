@@ -148,14 +148,19 @@ local function node_destroy<T>(node: Node<T>)
 	while node.children[1] do
 		node_destroy(node.children[1])
 	end
-	table.clear(node.children)
 end
 
 local function node_destroy_owned<T>(node: Node<T>)
-	while node.children[1] do
-		node_destroy(node.children[1])
+	for i = #node.children, 1, -1 do
+		local child = node.children[i]
+
+		flush_cleanups(child)
+		remove_dependencies(child)
+
+		node_destroy_owned(child)
+
+		node.children[i], child.parent = nil, false
 	end
-	table.clear(node.children)
 end
 
 local function effect_yield(thread: thread)
@@ -226,26 +231,22 @@ end
 
 local function graph_update_node<T>(node: ReactiveNode<T>): T
 	local should_reevaluate = #node.depending_on == 0
+	local active = coroutine.running()
 	for _, dependency in node.depending_on do
-		-- a dependency was evaluated after this dependency was invalidated
-		if dependency.last_evaluation > node.last_evaluation then
+		local dependency_updated_after_this_node = dependency.last_evaluation > node.last_evaluation
+		local dependency_state = dependency.state
+
+		if dependency_updated_after_this_node then
 			should_reevaluate = true
 			break
-		elseif dependency.state == "clean" then
-			continue
-		end
-		-- the dependency is dirty, so we have to reevaluate that dependency
-		if dependency.state == "dirty" then
+		elseif dependency_state == "dirty" then
 			graph_update_node(dependency)
-			if dependency.last_evaluation < node.last_evaluation then
-				continue
+
+			if dependency_updated_after_this_node then
+				should_reevaluate = true
+				break
 			end
-			should_reevaluate = true
-			break
-		end
-		-- if the dependency is running on the same thread, we have a recursive dependency, otherwise
-		-- it's fine to just recompute the value and have it invalidate later
-		if dependency.state == coroutine.running() then
+		elseif dependency_state == active then
 			error(
 				`a recursive dependency has been found, which may result in an infinite loop. this should be unreachable`
 			)
@@ -261,7 +262,7 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 	node_destroy_owned(node)
 	remove_dependencies(node)
 
-	node.state = coroutine.running()
+	node.state = active
 	local previous_result = node.cached_value
 	local success, res = graph_run_as(node, node.effect, previous_result)
 	-- we mark it as clean and bump the evaluation value since we don't
