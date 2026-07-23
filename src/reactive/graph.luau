@@ -242,7 +242,7 @@ local function graph_update_node<T>(node: ReactiveNode<T>): T
 		elseif dependency_state == "dirty" then
 			graph_update_node(dependency)
 
-			if dependency_updated_after_this_node then
+			if not dependency_updated_after_this_node then
 				should_reevaluate = true
 				break
 			end
