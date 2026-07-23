@@ -198,11 +198,11 @@ export type function PropertiesFor(class_name: type): type
 	-- Happens even with a union between `Instance` and `any`, but disappears when it's just `Instance`
 	local nested_table_or_function_or_child = types.newtable()
 	local nested_child_union = types.unionof(child_only_union, nested_table_or_function_or_child)
-	nested_table_or_function_or_child:setreadindexer(types.number, nested_child_union)
+	nested_table_or_function_or_child:setindexer(types.number, nested_child_union)
 	function_returns_child:setreturns({ nested_child_union })
 
 	local full_union = types.unionof(child_only_union, Action, properties)
-	properties:setreadindexer(types.number, types.optional(full_union))
+	properties:setindexer(types.number, types.optional(full_union))
 
 	return properties
 end
