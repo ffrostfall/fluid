@@ -140,7 +140,9 @@ type instance = Instance
 type Action = action.Identity
 
 type function GetInstance(class_name: type, instances: type): type
-	if not class_name:is("singleton") then
+	if class_name:is("extern") then
+		return class_name
+	elseif not class_name:is("singleton") then
 		return instance
 	end
 
