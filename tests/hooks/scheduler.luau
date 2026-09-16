@@ -22,7 +22,7 @@ end
 
 function scheduler_interface.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
 	local thread = coroutine.create(fn)
-	local data: { [any]: any } = table.pack(...)
+	local data: { [any]: any } = { ... }
 	data.resume = step_tick + n
 	data.trace = debug.traceback()
 
