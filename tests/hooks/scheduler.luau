@@ -12,17 +12,18 @@ local step_fluid = fluid.provide_scheduler()
 local step_tick = 0
 
 local waiting_threads: { [thread]: WaitingThread } = {}
-type WaitingThread = ({ resume: number, start: number } | { resume: number }) & { [any]: any } & { any }
+type WaitingThread = { resume: number, start: number } | { resume: number, n: number }
 
 -- scheduler.wait and scheduler.delay is overwritten to allow timeskip
 function scheduler_interface.wait(time: number?): number
-	waiting_threads[coroutine.running()] = { resume = step_tick + (time or 0), start = step_tick } :: WaitingThread
+	waiting_threads[coroutine.running()] = { resume = step_tick + (time or 0), start = step_tick }
 	return coroutine.yield()
 end
 
 function scheduler_interface.delay<T...>(n: number, fn: (T...) -> (), ...: T...): thread
 	local thread = coroutine.create(fn)
-	local data: { [any]: any } = table.pack(...)
+	local data = { ... }
+	data.n = select("#", ...)
 	data.resume = step_tick + n
 	data.trace = debug.traceback()
 
