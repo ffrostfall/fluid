@@ -6,8 +6,8 @@ This project uses Rokit as a toolchain manager.
 
 1. Clone down the repository
 2. Run `rokit install`
-3. **Optional:** If you'd like to test in Roblox, run `lune run build-test-place`, then open the file in studio.
-4. Run `lune run dev`
+3. **Optional:** If you'd like to test in Roblox, run `lute run build-test-place`, then open the file in studio.
+4. Run `lute run dev`
 
 ## Styling
 

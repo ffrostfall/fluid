@@ -7,7 +7,7 @@ license = "MIT"
 realm = "shared"
 exclude = [
 	".github",
-	".lune",
+	".lute",
 	".vscode",
 	"docs",
 	"node_modules",
