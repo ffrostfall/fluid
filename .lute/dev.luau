@@ -2,7 +2,8 @@ local process = require("@lute/process")
 local task = require("@lute/task")
 
 task.spawn(function()
-	process.run("rojo", {
+	process.run({
+		"rojo",
 		"sourcemap",
 		"roblox-tests.project.json",
 		"--output",
@@ -10,15 +11,14 @@ task.spawn(function()
 		"--watch",
 		"--include-non-scripts",
 	}, {
-		stdio = "forward",
+		stdio = "inherit",
 	})
 end)
 
 task.spawn(function()
 	-- stylua: ignore
 	process.run(
-		"rojo",
-		{ "serve", "roblox-tests.project.json" },
-		{ stdio = "forward" }
+		{ "rojo", "serve", "roblox-tests.project.json" },
+		{ stdio = "inherit" }
 	)
 end)

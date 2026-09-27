@@ -30,8 +30,8 @@ jobs:
       - name: Setup Rokit
         uses: CompeyDev/setup-rokit@v0.1.0
 
-      - name: Setup Lune typedefs
-        run: lune setup
+      - name: Setup lute typedefs
+        run: lute setup
 
       - name: Run analysis
-        run: lune run analyze
+        run: lute run analyze

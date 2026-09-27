@@ -1,25 +1,28 @@
 local fs = require("@lute/fs")
-local net = require("@lute/net")
+local net = require("@lute/net/client")
 local process = require("@lute/process")
 
-if not fs.isFile("types/globalTypes.d.luau") then
+if fs.type("types/globalTypes.d.luau") ~= "file" then
 	local response = net.request(
 		"https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/refs/heads/main/scripts/globalTypes.d.luau"
 	)
 
-	assert(response.ok, response.statusMessage)
+	assert(response.ok, response.headers.statusMessage)
 
-	fs.writeFile("types/globalTypes.d.luau", response.body)
+	local handle = fs.open("types/globalTypes.d.luau", "w+")
+	fs.write(handle, response.body)
+	fs.close(handle)
 end
 
-local status = process.exec("luaulsp", {
+local status = process.run({
+	"luaulsp",
 	"analyze",
 	"--definitions=types/globalTypes.d.luau",
 	"--base-luaurc=.luaurc",
 	"--flag:LuauSolverV2=true",
 	"src",
 }, {
-	stdio = "forward",
+	stdio = "inherit",
 })
 
-process.exit(status.code)
+process.exit(status.exitcode)
