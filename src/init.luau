@@ -10,6 +10,7 @@ local effect = require("@self/reactive/effect")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
+local instance_types = require("@self/instances/types")
 local interval = require("@self/utils/interval")
 local lerp = require("@self/anim/lerp")
 local mount = require("@self/instances/mount")
@@ -29,7 +30,8 @@ local untrack = require("@self/reactive/untrack")
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
-export type PropertiesFor<T> = create.PropertiesFor<T>
+export type PropertiesFor<T> = instance_types.PropertiesFor<T>
+export type GetInstance<T> = instance_types.GetInstance<T>
 
 local scheduler_thread: thread? = nil
 
