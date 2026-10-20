@@ -14,9 +14,7 @@
 	"prettier.useTabs": true,
 
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
-
-	"luau-lsp.types.definitionFiles": ["types/globals.d.luau"],
-
+	
 	"luau-lsp.sourcemap.autogenerate": false,
 	"luau-lsp.sourcemap.enabled": false,
 	"luau-lsp.sourcemap.includeNonScripts": true,

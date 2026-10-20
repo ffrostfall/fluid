@@ -10,6 +10,7 @@ local effect = require("@self/reactive/effect")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
 local graph = require("@self/reactive/graph")
+local instance_types = require("@self/instances/types")
 local interval = require("@self/utils/interval")
 local lerp = require("@self/anim/lerp")
 local mount = require("@self/instances/mount")
@@ -20,16 +21,18 @@ local show = require("@self/utils/show")
 local show_delay = require("@self/utils/show_delay")
 local source = require("@self/reactive/source")
 local spring = require("@self/anim/spring/spring_file")
+local style_sheet = require("@self/instances/style_sheet")
 local switch = require("@self/utils/switch")
 local switch_delay = require("@self/utils/switch_delay")
 local tags = require("@self/utils/tags")
 local types = require("@self/reactive/types")
 local untrack = require("@self/reactive/untrack")
 
+export type StyleSheet<Tokens = {}, Tags = {}, Queries = {}> = style_sheet.Sheet<Tokens, Tags, Queries>
 export type UsedAs<T> = types.UsedAs<T>
 export type Source<T> = types.Source<T>
 export type Action = action.Identity
-export type PropertiesFor<T> = create.PropertiesFor<T>
+export type PropertiesFor<I> = instance_types.PropertiesFor<I>
 
 local scheduler_thread: thread? = nil
 
@@ -59,6 +62,7 @@ end
 
 local fluid = {}
 
+fluid.style_sheet = style_sheet
 fluid.create = create
 fluid.mount = mount
 fluid.tags = tags

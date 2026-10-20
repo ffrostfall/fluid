@@ -19,6 +19,7 @@ fluid = "ffrostfall/fluid@<release>"
 # API overview
 
 - fluid.create("Frame")({ property = value })
+- fluid.style_sheet()
 - fluid.source()
 - fluid.async()
 - fluid.derive()

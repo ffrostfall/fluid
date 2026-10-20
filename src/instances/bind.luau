@@ -1,6 +1,7 @@
 local action = require("./action")
 local graph = require("../reactive/graph")
-local types = require("../reactive/types")
+local instance_types = require("./types")
+local reactive_types = require("../reactive/types")
 
 local function set_property(inst: Instance, property: string, value: any)
 	(inst :: any)[property] = value
@@ -10,7 +11,7 @@ local function get_property(inst: Instance, property: string): any
 	return (inst :: any)[property]
 end
 
-local function bind_property<T>(inst: Instance, property: string, value: types.Readable<T>)
+local function bind_property<T>(inst: Instance, property: string, value: reactive_types.Readable<T>)
 	local property_node = graph.create_reactive_node(graph.assert_stable_parent(), function()
 		set_property(inst, property, value())
 		return nil
@@ -101,17 +102,17 @@ local function bind_reactive_child(inst: Instance, func: () -> Result)
 	graph.evaluate_node(property_node)
 end
 
-local function bind(inst: Instance, props: { [unknown & number]: unknown })
-	for key: any, value: any in props do
+local function bind<I>(instance: I & Instance, props: instance_types.PropertiesFor<I>): I
+	for key, value in props :: any do
 		local key_type, value_type = type(key), typeof(value)
 
 		if key_type == "string" then
-			local property_value = get_property(inst, key)
+			local property_value = get_property(instance, key)
 			if typeof(property_value) ~= "RBXScriptSignal" then
 				if value_type == "function" then
-					bind_property(inst, key, value)
+					bind_property(instance, key, value)
 				else
-					set_property(inst, key, value)
+					set_property(instance, key, value)
 				end
 			elseif value_type == "function" then
 				local connection = property_value:Connect(value)
@@ -122,19 +123,19 @@ local function bind(inst: Instance, props: { [unknown & number]: unknown })
 			end
 		else
 			if value_type == "Instance" then
-				value.Parent = inst
+				value.Parent = instance
 			elseif value_type == "table" then
 				if value.__ACTION_SYMBOL == action.symbol then
-					value.callback(inst)
+					value.callback(instance)
 				else
-					bind(inst, value)
+					bind(instance, value)
 				end
 			elseif value_type == "function" then
-				bind_reactive_child(inst, value)
+				bind_reactive_child(instance, value)
 			end
 		end
 	end
-	return inst
+	return instance
 end
 
 return bind
