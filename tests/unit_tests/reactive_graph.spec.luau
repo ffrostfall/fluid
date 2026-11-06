@@ -747,6 +747,22 @@ local function tests()
 				CHECK(#data() == 1)
 				CHECK(updates == 2)
 			end
+
+			do
+				CASE("keeps false values")
+				local input = source({ a = false } :: { [string]: boolean })
+				local creations = 0
+
+				local output = for_keys(input, function(value)
+					creations += 1
+					return value()
+				end)
+
+				output()
+				input({ a = false, b = true })
+				output()
+				CHECK(creations == 2)
+			end
 		end)
 	)
 
