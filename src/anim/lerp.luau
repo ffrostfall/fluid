@@ -3,6 +3,7 @@ local oklab = require("../utils/oklab")
 local read = require("../utils/read")
 local types = require("../reactive/types")
 
+local DEFERRED = graph.evaluation.DEFERRED
 local active_animations = {}
 
 local function vector_lerp(a: vector, b: vector, t: number): vector
@@ -52,7 +53,7 @@ function lerp.create<T>(goal: types.UsedAs<T>, takes: types.UsedAs<number>)
 		return nil
 	end
 
-	graph.create_reactive_node(graph.assert_stable_parent(), effect, "deferred")
+	graph.create_reactive_node(graph.assert_stable_parent(), effect, DEFERRED)
 
 	return function()
 		graph.push_dependency(output)

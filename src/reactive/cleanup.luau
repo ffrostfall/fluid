@@ -1,49 +1,48 @@
-local graph = require("./graph")
-local get_scope = graph.get_scope
-local push_cleanup = graph.push_cleanup
+local scheduler = require("../scheduler")
 
-local function helper(obj: any)
-	return if typeof(obj) == "RBXScriptConnection"
-		then function()
-			obj:Disconnect()
-		end
-		elseif type(obj) == "thread" then function()
-			task.cancel(obj)
-		end
-		elseif typeof(obj) == "Instance" then function()
-			obj:Destroy()
-		end
-		elseif obj.destroy then function()
-			obj:destroy()
-		end
-		elseif obj.disconnect then function()
-			obj:disconnect()
-		end
-		elseif obj.Destroy then function()
-			obj:Destroy()
-		end
-		elseif obj.Disconnect then function()
-			obj:Disconnect()
-		end
-		else error("cannot cleanup given object")
-end
+-- objects are stored as is and get disconnected/cancelled/destroyed, instead of needing a
+-- closure for each one
+export type CleanupObject =
+	{ destroy: (self: any) -> () }
+	| { disconnect: (self: any) -> () }
+	| { Destroy: (self: any) -> () }
+	| { Disconnect: (self: any) -> () }
 
-local function cleanup(value: unknown)
-	local scope = get_scope()
+export type Cleanup = (() -> ()) | thread | RBXScriptConnection | Instance | CleanupObject
 
-	if not scope then
-		error("cannot cleanup outside a stable or reactive scope")
-	end
-	assert(scope)
+-- the solver can't narrow CleanupObject by which key it has, so cleanup looks for the method through this
+type CleanupMethods = {
+	read destroy: ((self: any) -> ())?,
+	read disconnect: ((self: any) -> ())?,
+	read Destroy: ((self: any) -> ())?,
+	read Disconnect: ((self: any) -> ())?,
+}
 
-	if type(value) == "function" then
-		push_cleanup(scope, value :: () -> ())
+-- cleans up a value that was passed to fluid.cleanup, the graph calls it when the scope reruns or dies
+local function cleanup(value: Cleanup)
+	local kind = typeof(value)
+
+	if kind == "function" then
+		(value :: () -> ())()
+	elseif kind == "RBXScriptConnection" then
+		(value :: any):Disconnect()
+	elseif kind == "thread" then
+		scheduler.cancel(value :: thread)
+	elseif kind == "Instance" then
+		(value :: any):Destroy()
 	else
-		push_cleanup(scope, helper(value))
+		local object = (value :: CleanupObject) :: CleanupMethods
+
+		if object.destroy then
+			object:destroy()
+		elseif object.disconnect then
+			object:disconnect()
+		elseif object.Destroy then
+			object:Destroy()
+		elseif object.Disconnect then
+			object:Disconnect()
+		end
 	end
 end
 
-type Destroyable = { destroy: (any) -> () } | { Destroy: (any) -> () }
-type Disconnectable = { disconnect: (any) -> () } | { Disconnect: (any) -> () }
-
-return cleanup :: ((callback: () -> ()) -> ()) & ((thread: thread) -> ()) & ((instance: Destroyable) -> ()) & ((connection: Disconnectable) -> ()) & ((instance: Instance) -> ()) & ((connection: RBXScriptConnection) -> ())
+return cleanup

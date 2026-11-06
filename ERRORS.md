@@ -67,3 +67,7 @@ Self explanatory.
 ## stable_parent_assertion_failed
 
 ## invalid_parent_scope
+
+## too_many_edges
+
+A node read more than 65535 different nodes in one run, or more than 65535 nodes are reading it at once. Split the reads across derives, so no single node has to read or be read by that many.

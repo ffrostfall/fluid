@@ -2,6 +2,9 @@ local action = require("./action")
 local graph = require("../reactive/graph")
 local types = require("../reactive/types")
 
+local EAGER = graph.evaluation.EAGER
+local DEFERRED = graph.evaluation.DEFERRED
+
 local function set_property(inst: Instance, property: string, value: any)
 	(inst :: any)[property] = value
 end
@@ -14,7 +17,7 @@ local function bind_property<T>(inst: Instance, property: string, value: types.R
 	local property_node = graph.create_reactive_node(graph.assert_stable_parent(), function()
 		set_property(inst, property, value())
 		return nil
-	end, "eager", nil)
+	end, EAGER, nil)
 
 	graph.evaluate_node(property_node)
 end
@@ -59,7 +62,7 @@ local function reactive_child_effect(
 
 			graph.create_reactive_node(graph.get_scope(), function(value)
 				return reactive_child_effect(inst, child, value)
-			end, "deferred", children)
+			end, DEFERRED, children)
 
 			graph.push_cleanup(graph.get_scope(), function()
 				for child in children.current do
@@ -96,7 +99,7 @@ local function bind_reactive_child(inst: Instance, func: () -> Result)
 
 	local property_node = graph.create_reactive_node(stable_node :: any, function(value)
 		return reactive_child_effect(inst, func, value)
-	end, "deferred", children)
+	end, DEFERRED, children)
 
 	graph.evaluate_node(property_node)
 end

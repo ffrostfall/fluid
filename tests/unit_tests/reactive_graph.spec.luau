@@ -1,4 +1,5 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
+local dev = require("@src/dev")
 local fluid = require("@src/")
 local graph = require("../../src/reactive/graph")
 local hooks = require("@tests/hooks")
@@ -21,9 +22,40 @@ local function tests()
 		end
 	end
 
+	-- slots are u16s, each one is where the edge back is in the other node's array
+	local function edges_consistent(node: any): boolean
+		local dependents = node.dependents
+		if dependents then
+			for idx, dependent in dependents do
+				local slot = buffer.readu16(node.dependent_slots, idx * 2)
+				if
+					dependent.depending_on[slot] ~= node
+					or buffer.readu16(dependent.depending_on_slots, slot * 2) ~= idx
+				then
+					return false
+				end
+			end
+		end
+
+		local depending_on = node.depending_on
+		if depending_on then
+			for idx, dependency in depending_on do
+				local slot = buffer.readu16(node.depending_on_slots, idx * 2)
+				if
+					dependency.dependents[slot] ~= node
+					or buffer.readu16(dependency.dependent_slots, slot * 2) ~= idx
+				then
+					return false
+				end
+			end
+		end
+
+		return true
+	end
+
 	--[=[
 	Run garbage collection. We need to do garbage collection tests with this because we're still using Luau GC
-	
+
 	Fusion does scopes to avoid using Luau GC because it's easy for memory leaks to happen.
 	But that's horrific for DX
 ]=]
@@ -53,6 +85,40 @@ local function tests()
 			end)
 
 			CHECK(count == 1)
+		end
+
+		do
+			CASE("cleanup accepts objects")
+			local calls = {}
+			local thread = coroutine.create(function()
+				coroutine.yield()
+			end)
+			coroutine.resume(thread)
+
+			-- methods get called with the object as self
+			local function record(name: string)
+				return function(_self: any)
+					table.insert(calls, name)
+				end
+			end
+
+			local destroy = fluid.root(function()
+				fluid.cleanup({ destroy = record("destroy") })
+				fluid.cleanup({ disconnect = record("disconnect") })
+				fluid.cleanup({ Destroy = record("Destroy") })
+				fluid.cleanup({ Disconnect = record("Disconnect") })
+				-- same priority as before, destroy wins over Destroy
+				fluid.cleanup({ destroy = record("priority"), Destroy = record("wrong") })
+				fluid.cleanup(function()
+					table.insert(calls, "function")
+				end)
+				fluid.cleanup(thread)
+			end)
+
+			CHECK(#calls == 0)
+			destroy()
+			CHECK(table.concat(calls, ",") == "destroy,disconnect,Destroy,Disconnect,priority,function")
+			CHECK(coroutine.status(thread) == "dead")
 		end
 	end)
 
@@ -286,6 +352,151 @@ local function tests()
 				CHECK(cleaned[2] == 1)
 			end
 
+			do
+				CASE("derive doesn't rerun if nothing changed since its last run")
+				local first = fluid.source(0)
+				local second = fluid.source(0)
+				local gate = fluid.derive(function()
+					return second() > 100
+				end)
+
+				local runs = 0
+				local value = fluid.derive(function()
+					first()
+					gate()
+					runs += 1
+					return 0
+				end)
+
+				value()
+				first(1) -- reruns, but returns the same value
+				value()
+				CHECK(runs == 2)
+				second(1) -- gate reruns, but doesn't change
+				value()
+				CHECK(runs == 2)
+			end
+
+			do
+				CASE("keeps dependency on a dirty derive that didn't change")
+				local first = fluid.source(0)
+				local condition = fluid.source(1)
+				local text = fluid.source("a")
+
+				local positive = fluid.derive(function()
+					return condition() > 0
+				end)
+				local value = fluid.derive(function()
+					return if positive() then text() else "none"
+				end)
+
+				local seen
+				fluid.deferred(function()
+					first()
+					seen = value()
+				end)
+
+				CHECK(seen == "a")
+				condition(2) -- positive reruns, but stays true
+				first(1)
+				step_scheduler()
+				text("b")
+				step_scheduler()
+				CHECK(seen == "b")
+			end
+
+			do
+				CASE("node destroyed by its owner rerunning doesn't run again")
+				local src = fluid.source(0)
+				local other = fluid.source(0)
+				local runs = 0
+
+				local owner: () -> number
+				owner = fluid.derive(function()
+					local value = src()
+
+					-- owned by the derive, so the derive rerunning destroys it
+					fluid.untrack(function()
+						fluid.deferred(function()
+							other()
+							owner()
+							runs += 1
+						end)
+						return nil
+					end)
+
+					return value
+				end)
+
+				owner()
+				CHECK(runs == 1)
+
+				-- it couldn't depend on owner while owner was running, so this run adds that edge
+				other(1)
+				step_scheduler()
+				CHECK(runs == 2)
+
+				-- updating it reruns owner first, which destroys it and creates a new one
+				src(1)
+				step_scheduler()
+				CHECK(runs == 3)
+
+				-- only the new one is still subscribed
+				other(2)
+				step_scheduler()
+				CHECK(runs == 4)
+			end
+
+			do
+				CASE("destroying a node with dependents keeps edges consistent")
+				local scope = graph.assert_scope()
+				local src = graph.create_source_node(0)
+				local other = graph.create_source_node(0)
+
+				local derived = graph.create_reactive_node(scope, function()
+					graph.evaluate_node(src)
+					return math.random()
+				end, graph.evaluation.LAZY, nil)
+
+				local readers: { graph.Computation<any> } = {}
+				for i = 1, 5 do
+					readers[i] = graph.create_effect_node(scope, function()
+						-- the dead node's edge ends up in the middle of depending_on
+						graph.evaluate_node(other)
+						graph.evaluate_node(derived)
+						graph.evaluate_node(src)
+						return nil
+					end, graph.evaluation.EAGER, nil)
+					graph.refresh_node(readers[i])
+				end
+
+				local function all_consistent(): boolean
+					local ok = edges_consistent(src) and edges_consistent(other) and edges_consistent(derived)
+					for _, reader in readers do
+						ok = ok and edges_consistent(reader)
+					end
+					return ok
+				end
+
+				CHECK(#derived.dependents == 5)
+				graph.destroy(derived)
+				-- the dead node keeps its dependents until they rerun
+				CHECK(#derived.depending_on == 0)
+				CHECK(all_consistent())
+
+				graph.update_node(other, 1)
+				CHECK(#derived.dependents == 0)
+				CHECK(all_consistent())
+
+				local still_reading = false
+				for _, reader in readers do
+					if table.find(reader.depending_on, derived :: any) then
+						still_reading = true
+					end
+				end
+				CHECK(not still_reading)
+			end
+
 			-- do
 			-- 	CASE("garbage collection")
 			-- 	-- check that `b` does not allow gc of `a`
@@ -361,6 +572,279 @@ local function tests()
 				num(1)
 
 				CHECK(count == 2)
+			end
+
+			do
+				CASE("destroyed nodes don't rerun")
+				local src = fluid.source(0)
+				local child_runs = 0
+
+				fluid.effect(function()
+					src()
+
+					fluid.untrack(function()
+						fluid.effect(function()
+							src()
+							child_runs += 1
+						end)
+						return nil
+					end)
+				end)
+
+				CHECK(child_runs == 1)
+				src(1)
+				CHECK(child_runs == 2)
+				src(2)
+				CHECK(child_runs == 3)
+			end
+
+			do
+				CASE("error inside untrack doesn't kill the node")
+				local src = fluid.source(0)
+				local runs = 0
+
+				hooks.logging.on_warn(function() end)
+				hooks.logging.on_error(function() end)
+
+				fluid.effect(function()
+					local value = src()
+					runs += 1
+
+					fluid.untrack(function()
+						if value == 1 then
+							error("untracked boom")
+						end
+						return nil
+					end)
+				end)
+
+				src(1)
+				src(2)
+				hooks.logging.on_warn(nil)
+				hooks.logging.on_error(nil)
+
+				CHECK(runs == 3)
+			end
+
+			do
+				CASE("many effects setting sources in one invalidation don't nest")
+				local src = fluid.source(0)
+				local reads = 0
+
+				for _ = 1, 300 do
+					local own = fluid.source(0)
+
+					fluid.effect(function()
+						own(src())
+					end)
+
+					fluid.effect(function()
+						own()
+						reads += 1
+					end)
+				end
+
+				reads = 0
+				src(1)
+				CHECK(reads == 300)
+			end
+
+			do
+				CASE("erroring deferred node doesn't stop the flush")
+				local src = fluid.source(0)
+				local other_runs = 0
+				local reported = 0
+
+				hooks.logging.on_error(function(text)
+					if string.find(text, "deferred boom") then
+						reported += 1
+					end
+				end)
+
+				fluid.deferred(function()
+					if src() == 1 then
+						error("deferred boom")
+					end
+				end)
+
+				fluid.deferred(function()
+					src()
+					other_runs += 1
+				end)
+
+				src(1)
+				local ok = pcall(fluid.provide_scheduler(), 1 / 60)
+				hooks.logging.on_error(nil)
+
+				CHECK(ok)
+				CHECK(reported == 1)
+				CHECK(other_runs == 2)
+			end
+
+			do
+				CASE("dependencies are exactly what was read in the last run")
+				local scope = graph.assert_scope()
+				local a = graph.create_source_node(0)
+				local b = graph.create_source_node(0)
+				local c = graph.create_source_node(0)
+				local trigger = graph.create_source_node(0)
+				local reads: { { graph.SourceNode<number> } } = { { a, b }, { b, a }, { a }, {}, { c, a, c } }
+				local runs = 0
+
+				local node = graph.create_reactive_node(scope, function()
+					runs += 1
+					graph.evaluate_node(trigger)
+					for _, dependency in reads[runs] do
+						graph.evaluate_node(dependency)
+					end
+					return nil
+				end, graph.evaluation.EAGER, nil)
+
+				local function depends_on(expected: { graph.SourceNode<number> }): boolean
+					local depending_on = node.depending_on
+					if depending_on[1] ~= trigger or #depending_on ~= #expected + 1 then
+						return false
+					end
+
+					for idx, dependency in expected do
+						if depending_on[idx + 1] ~= dependency then
+							return false
+						end
+					end
+
+					-- and every source only has an edge back if it's still a dependency
+					for _, source in { a, b, c } do
+						local edges = 0
+						for _, dependent in source.dependents do
+							if dependent == node then
+								edges += 1
+							end
+						end
+
+						if edges ~= (if table.find(expected, source) then 1 else 0) then
+							return false
+						end
+					end
+
+					return true
+				end
+
+				graph.evaluate_node(node)
+				CHECK(depends_on({ a, b }))
+				graph.update_node(trigger, 1)
+				CHECK(depends_on({ b, a }))
+				graph.update_node(trigger, 2)
+				CHECK(depends_on({ a }))
+				-- b was only read in earlier runs, so it shouldn't rerun the node anymore
+				graph.update_node(b, 1)
+				CHECK(runs == 3)
+				graph.update_node(trigger, 3)
+				CHECK(depends_on({}))
+				graph.update_node(trigger, 4)
+				CHECK(depends_on({ c, a }))
+			end
+
+			do
+				CASE("reading a dependency multiple times adds one edge")
+				local scope = graph.assert_scope()
+				local src = graph.create_source_node(0)
+				local runs = 0
+
+				local node = graph.create_reactive_node(scope, function()
+					graph.evaluate_node(src)
+					graph.evaluate_node(src)
+					graph.evaluate_node(src)
+					runs += 1
+					return nil
+				end, graph.evaluation.EAGER, nil)
+				graph.evaluate_node(node)
+
+				CHECK(#src.dependents == 1)
+				CHECK(#node.depending_on == 1)
+
+				graph.update_node(src, 1)
+				CHECK(runs == 2)
+				CHECK(#src.dependents == 1)
+				CHECK(#node.depending_on == 1)
+			end
+
+			do
+				CASE("dependency edges stay consistent")
+				math.randomseed(1)
+				local scope = graph.assert_scope()
+				local sources: { graph.SourceNode<number> } = {}
+				local nodes: { graph.ReactiveNode<any> } = {}
+
+				for i = 1, 8 do
+					sources[i] = graph.create_source_node(0)
+				end
+
+				-- lazy nodes reading random sources, then eager ones reading random sources & lazy nodes.
+				-- duplicate reads are intentional, and what's read changes every run
+				for i = 1, 16 do
+					local is_lazy = i <= 4
+					nodes[i] = graph.create_reactive_node(scope, function()
+						for _ = 1, math.random(0, 6) do
+							if is_lazy or math.random() < 0.6 then
+								graph.evaluate_node(sources[math.random(1, 8)])
+							else
+								graph.evaluate_node(nodes[math.random(1, 4)])
+							end
+						end
+						return math.random()
+					end, if is_lazy then graph.evaluation.LAZY else graph.evaluation.EAGER, nil)
+				end
+
+				for i = 1, 16 do
+					graph.evaluate_node(nodes[i])
+				end
+
+				for step = 1, 300 do
+					graph.update_node(sources[math.random(1, 8)], math.random())
+
+					if step == 150 then
+						for i = 5, 8 do
+							graph.destroy(nodes[i])
+						end
+					end
+				end
+
+				for _, node in sources do
+					CHECK(edges_consistent(node))
+				end
+
+				for _, node in nodes do
+					CHECK(edges_consistent(node))
+				end
+
+				CHECK(#nodes[5].depending_on == 0)
+			end
+
+			do
+				CASE("reading more nodes than a u16 can index errors")
+				local scope = graph.assert_scope()
+				local sources: { graph.SourceNode<number> } = {}
+				for i = 1, 65536 do
+					sources[i] = graph.create_source_node(i)
+				end
+
+				local reads = 0
+				local node = graph.create_reactive_node(scope, function()
+					for _, source in sources do
+						graph.evaluate_node(source)
+						reads += 1
+					end
+					return nil
+				end, graph.evaluation.EAGER, nil)
+
+				local ok, err = pcall(graph.evaluate_node, node)
+				CHECK(not ok)
+				CHECK(string.find(tostring(err), "too_many_edges", 1, true) ~= nil)
+				-- the last index a u16 can hold still works
+				CHECK(reads == 65535)
+				-- and hitting the limit didn't leave a half added edge behind
+				local destroyed = pcall(graph.destroy, node)
+				CHECK(destroyed)
 			end
 		end)
 	)
@@ -763,6 +1247,41 @@ local function tests()
 				output()
 				CHECK(creations == 2)
 			end
+
+			do
+				CASE("nil outputs are left out, false is kept")
+				local input = source({ 1, 2, 3 })
+
+				local output = for_keys(input, function(value)
+					local v = value()
+					return if v == 2 then nil elseif v == 3 then false else v
+				end)
+
+				local result = output()
+				CHECK(#result == 2)
+				CHECK(result[1] == 1)
+				CHECK(result[2] == false)
+			end
+
+			do
+				CASE("active is false while being removed")
+				local items = source({ 1 })
+				local active: () -> boolean = nil :: any
+
+				local data = for_keys(items, function(_, _, is_active)
+					active = is_active
+					return 1, 0
+				end)
+
+				data()
+				CHECK(active() == true)
+				items({})
+				data()
+				CHECK(active() == false)
+				items({ 1 })
+				data()
+				CHECK(active() == true)
+			end
 		end)
 	)
 
@@ -974,6 +1493,36 @@ local function tests()
 				step_scheduler()
 				CHECK(#data() == 1)
 				CHECK(updates == 2)
+			end
+
+			do
+				CASE("false values")
+				local items = source({ false, true })
+				local created = 0
+
+				local output = for_values(items, function(value)
+					created += 1
+					return value
+				end)
+
+				CHECK(#output() == 2)
+				items({ true, false })
+				CHECK(#output() == 2)
+				CHECK(created == 2)
+			end
+
+			do
+				CASE("duplicate values use the last key")
+				local input = source({ "a", "a" })
+				local read_key: () -> number = nil :: any
+
+				local output = for_values(input, function(_, key)
+					read_key = key
+					return true
+				end)
+
+				CHECK(#output() == 1)
+				CHECK(read_key() == 2)
 			end
 		end)
 	)
@@ -1229,6 +1778,20 @@ local function tests()
 
 				CHECK(src() == 2)
 				CHECK(run_count == 2)
+			end
+
+			do
+				CASE("effects run on the caller's thread outside dev mode")
+				local caller = coroutine.running()
+				local thread
+
+				dev.enabled = false
+				fluid.effect(function()
+					thread = coroutine.running()
+				end)
+				dev.enabled = true
+
+				CHECK(thread == caller)
 			end
 		end)
 	)

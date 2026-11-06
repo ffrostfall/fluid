@@ -14,6 +14,8 @@ type SwitchGraph<Result> = {
 	result_values: { [Condition<Result>]: Result },
 }
 
+local LAZY = graph.evaluation.LAZY
+
 local function switch<Key, Result>(condition: () -> Key)
 	return function(options: { [Key]: (types.Readable<boolean>) -> (Result, number?) }): () -> { Result }
 		local parent_node = graph.assert_stable_parent()
@@ -98,7 +100,7 @@ local function switch<Key, Result>(condition: () -> Key)
 			return p
 		end
 
-		local reactive = graph.create_reactive_node(parent_node, update, "lazy", {
+		local reactive = graph.create_reactive_node(parent_node, update, LAZY, {
 			previous_effect = nil,
 			scopes = {},
 			active_nodes = {},

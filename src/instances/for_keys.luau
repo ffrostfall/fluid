@@ -3,6 +3,8 @@ local read = require("../utils/read")
 local scheduler = require("../scheduler")
 local types = require("../reactive/types")
 
+local LAZY = graph.evaluation.LAZY
+
 local function indexes<K, VI, VO>(
 	input: types.UsedAs<{ read [K]: VI }>,
 	transform: (() -> VI, K, active: types.Readable<boolean>) -> (VO, number?)
@@ -19,7 +21,7 @@ local function indexes<K, VI, VO>(
 	local output_delays: { [K]: number? } = {}
 	local output_active: { [K]: graph.SourceNode<boolean> } = {}
 	local destruction_threads: { [K]: thread } = {}
-	local reactive_node = graph.create_reactive_node<<VO>>(child_parent, false, "lazy", {})
+	local reactive_node = graph.create_reactive_node<<VO>>(child_parent, false, LAZY, {} :: any)
 	-- due to how the hybrid push pull graph works, we can't invalidate the reactive
 	-- node. doing so will cause the graph to look at it's dependencies and
 	-- make the correct assumption that the reactive node hasn't updated.

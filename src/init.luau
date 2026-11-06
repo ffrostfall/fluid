@@ -2,7 +2,6 @@ local action = require("@self/instances/action")
 local async = require("@self/reactive/async")
 local bind = require("@self/instances/bind")
 local changed = require("@self/instances/changed")
-local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
 local derive = require("@self/reactive/derive")
@@ -32,7 +31,21 @@ export type Source<T> = types.Source<T>
 export type Action = action.Identity
 export type PropertiesFor<T> = create.PropertiesFor<T>
 
+type Destroyable = { destroy: (any) -> () } | { Destroy: (any) -> () }
+type Disconnectable = { disconnect: (any) -> () } | { Disconnect: (any) -> () }
+
 local scheduler_thread: thread? = nil
+
+-- values are stored as is, the graph works out how to clean them up when the scope reruns or dies
+local function cleanup(value: graph.Cleanup)
+	local scope = graph.get_scope()
+
+	if not scope then
+		error("cannot cleanup outside a stable or reactive scope")
+	end
+
+	graph.push_cleanup(scope, value)
+end
 
 local function step(delta_time: number)
 	-- This will call intervals
@@ -71,7 +84,8 @@ fluid.action = action.create
 fluid.is_action = action.is_action
 
 -- Reactive graph
-fluid.cleanup = cleanup
+fluid.cleanup =
+	cleanup :: ((callback: () -> ()) -> ()) & ((thread: thread) -> ()) & ((instance: Destroyable) -> ()) & ((connection: Disconnectable) -> ()) & ((instance: Instance) -> ()) & ((connection: RBXScriptConnection) -> ())
 fluid.derive = derive
 fluid.effect = effect
 fluid.deferred = deferred

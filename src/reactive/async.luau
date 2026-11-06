@@ -15,6 +15,8 @@ unlike an effect though, all evaluations are deferred since we make the assumpti
 that async yields every single time.
 ]]
 
+local ASYNC = graph.evaluation.ASYNC
+
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local reactive_node: graph.ReactiveNode<any>
 	local value: graph.SourceNode<T> = graph.create_source_node(nil)
@@ -46,7 +48,7 @@ local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 		end)
 	end
 
-	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "async")
+	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, ASYNC)
 
 	graph.evaluate_node(reactive_node)
 

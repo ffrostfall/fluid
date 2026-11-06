@@ -100,6 +100,10 @@ function logging.errors.graph_stable_parent_assertion_failed()
 	return `STABLE PARENT ASSERTION FAILED: {debug.info(2, "n")}:{debug.info(2, "l")}`
 end
 
+function logging.errors.graph_too_many_edges(max: number)
+	return `A node can't depend on or be depended on by more than {max} nodes [too_many_edges]`
+end
+
 function logging.errors.graph_cant_call_while_parent_scope_reactive(func_name: string)
 	return `Can't call fluid.{func_name} while the current scope is reactive`
 end
