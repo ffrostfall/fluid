@@ -6,6 +6,7 @@ license = "MIT"
 
 realm = "shared"
 exclude = [
+	"bench",
 	".github",
 	".lune",
 	".vscode",
