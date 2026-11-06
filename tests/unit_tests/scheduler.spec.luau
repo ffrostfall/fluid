@@ -42,6 +42,25 @@ TEST("scheduler stepping", function()
 		step_scheduler(1)
 		CHECK(counted_seconds == 1)
 	end
+
+	do
+		CASE("yielding callback doesn't stall the others")
+		table.clear(scheduler.connections)
+		local ran = 0
+
+		scheduler.on_render(function()
+			coroutine.yield()
+		end)
+		scheduler.on_render(function()
+			ran += 1
+		end)
+
+		step_scheduler(1)
+		CHECK(ran == 1)
+		step_scheduler(1)
+		CHECK(ran == 2)
+		table.clear(scheduler.connections)
+	end
 end)
 
 TEST(
