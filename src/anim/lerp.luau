@@ -6,22 +6,18 @@ local types = require("../reactive/types")
 local DEFERRED = graph.evaluation.DEFERRED
 local active_animations = {}
 
-local function vector_lerp(a: vector, b: vector, t: number): vector
-	return a + (b - a) * t
-end
-
 local function general_lerp(a: any, b: any, t: number): any
 	return a + (b - a) * t
 end
 
 local lerp_functions: { [string]: (a: any, b: any, t: number) -> any } = {
 	number = math.lerp,
-	Vector3 = vector_lerp,
+	Vector3 = vector.lerp,
 	Vector2 = general_lerp,
 	Color3 = function(a: Color3, b: Color3, t)
 		local initial_vector = oklab.from_srgb(vector.create(a.R, a.G, a.B))
 		local goal_vector = oklab.from_srgb(vector.create(b.R, b.G, b.B))
-		local interpolated_vector = vector_lerp(initial_vector, goal_vector, t)
+		local interpolated_vector = vector.lerp(initial_vector, goal_vector, t)
 		local result_vector = vector.clamp(oklab.to_srgb(interpolated_vector), vector.zero, vector.one)
 
 		return Color3.new(result_vector.x, result_vector.y, result_vector.z)
