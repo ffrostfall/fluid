@@ -40,7 +40,6 @@ local function values<V, KI, KO>(
 		output_active[value] = nil
 		output_delays[value] = nil
 		destruction_threads[value] = nil
-		graph.invalidate(reactive_node)
 	end
 
 	local function destroy_delayed(value: V)
@@ -96,9 +95,9 @@ local function values<V, KI, KO>(
 					return key_node.cached_value
 				end
 
-				local function read_active(): KI
+				local function read_active(): boolean
 					graph.push_dependency(active_node)
-					return active_node.cached_value
+					return active_node.cached_value :: any
 				end
 
 				local result: KO, delay: number? =
