@@ -1,5 +1,6 @@
 --!optimize 1
-local dev_mode = true
+local task = (task or require("@lute/task")) :: typeof(task)
+
 
 local function format(text: string): string
 	return (string.format("[fluid]: %*", text))
@@ -27,8 +28,12 @@ function logging.error(text: string)
 	error(format(text))
 end
 
+function logging.report_error(text: string)
+	task.spawn(error, format(text), 0)
+end
+
 function logging.warn_traceback(text: string, thread: thread)
-	logging.__warn_facade(debug.traceback(thread, format(text), 2))
+	warn(debug.traceback(thread, format(text), 2))
 end
 
 function logging.errors.inst_prop_nonexistent(inst_class: string, inst_property: string)
