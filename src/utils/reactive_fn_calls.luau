@@ -21,12 +21,4 @@ function reactive_fn_calls.no_yield_call<U..., T...>(
 	return ok, a, b, c, d, e
 end
 
-function reactive_fn_calls.call<U..., T...>(
-	fn: (T...) -> U...,
-	err_handler: (unknown) -> exception.Identity,
-	...: T...
-): (boolean, U...)
-	return xpcall(fn, err_handler, ...)
-end
-
 return reactive_fn_calls
