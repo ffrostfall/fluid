@@ -3,8 +3,13 @@ local types = require("./types")
 
 local refs: { [graph.Node<any>]: true? } = {}
 
+-- the scope only passes 1 value through, so the results get put in a table instead of using a closure to capture them
+local function call_packed(fn: (destroy: types.Cleanup) -> ...unknown, destroy: types.Cleanup)
+	return { fn(destroy) }
+end
+
 local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup, T...)
-	local node = graph.create_stable_node(graph.get_scope())
+	local node = graph.create_stable_node(graph.get_scope() or false)
 
 	-- prevent gc of root node
 	refs[node] = true
@@ -17,20 +22,15 @@ local function root<T...>(fn: (destroy: types.Cleanup) -> T...): (types.Cleanup,
 		graph.destroy(node)
 	end
 
-	local results = {}
-
-	local success, result = graph.run_as(node, function(destroy)
-		results = { fn(destroy) }
-		return nil
-	end, destroy)
+	local success, results = graph.run_as(node, call_packed, fn, destroy)
 
 	if not success then
 		destroy()
-		error(result.trace)
+		error((results :: any).trace)
 	end
 
 	-- luau type issue w generic type packs
-	return destroy, unpack(results) :: any
+	return destroy, table.unpack(results :: any)
 end
 
 return root

@@ -1,31 +1,23 @@
 local graph = require("./graph")
 local types = require("./types")
 
-local function get_argument_from<T>(...: T): (boolean, T)
-	if select("#", ...) == 0 then
-		return false, nil
-	end
-
-	local first_value = ...
-	return true, first_value
-end
+local push_dependency = graph.push_dependency
+local update_node = graph.update_node
 
 local function source<T>(initial_value: T): types.Source<T>
 	local node = graph.create_source_node(initial_value)
 
 	-- This uses varargs so we can tell the difference between f(), f(nil), and f(value)
 	return function(...: T): T
-		local has_value, value = get_argument_from(...)
-
-		if has_value then
-			-- setting the source node
-			graph.update_node(node, value)
-			return value
-		else
+		if select("#", ...) == 0 then
 			-- dependency, returning the value
-			graph.push_dependency(node)
+			push_dependency(node)
 			return node.cached_value
 		end
+
+		local value = ...
+		update_node(node, value)
+		return value
 	end
 end
 
