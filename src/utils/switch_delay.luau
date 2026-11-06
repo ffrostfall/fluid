@@ -12,9 +12,25 @@ type SwitchGraph<Result> = {
 	delay_by: { [Condition<Result>]: number? },
 	threads: { [Condition<Result>]: thread? },
 	result_values: { [Condition<Result>]: Result },
+	-- result_values as an array, rebuilt when the node updates instead of on every read
+	values: { Result },
 }
 
 local LAZY = graph.evaluation.LAZY
+
+local function destroy<Result>(p: SwitchGraph<Result>, c: Condition<Result>)
+	graph.destroy(p.scopes[c])
+	p.scopes[c] = nil
+	p.active_nodes[c] = nil
+	p.delay_by[c] = nil
+	p.threads[c] = nil
+	p.result_values[c] = nil
+end
+
+local function destroy_delayed<Result>(p: SwitchGraph<Result>, c: Condition<Result>, update_counter: graph.SourceNode<number>)
+	destroy(p, c)
+	graph.update_node(update_counter, update_counter.cached_value + 1)
+end
 
 local function switch<Key, Result>(condition: () -> Key)
 	return function(options: { [Key]: (types.Readable<boolean>) -> (Result, number?) }): () -> { Result }
@@ -27,32 +43,14 @@ local function switch<Key, Result>(condition: () -> Key)
 			return options[condition()]
 		end)
 
-		local function destroy(p: SwitchGraph<Result>, c: Condition<Result>)
-			graph.destroy(p.scopes[c])
-			p.scopes[c] = nil
-			p.active_nodes[c] = nil
-			p.delay_by[c] = nil
-			p.threads[c] = nil
-			p.result_values[c] = nil
-		end
-
-		local function destroy_delayed(p: SwitchGraph<Result>, c: Condition<Result>)
-			destroy(p, c)
-			graph.update_node(update_counter, update_counter.cached_value + 1)
-		end
-
-		local function update(p: SwitchGraph<Result>)
-			graph.push_dependency(update_counter)
-
-			local previous_effect = p.previous_effect
+		local function switch_effect(
+			p: SwitchGraph<Result>,
+			previous_effect: Condition<Result>?,
+			active_effect: Condition<Result>?
+		)
 			local scopes = p.scopes
 			local active_nodes = p.active_nodes
 			local result_values = p.result_values
-			local active_effect = callback()
-
-			if previous_effect == active_effect then
-				return p
-			end
 
 			-- previous effect isn't the same as active effect, so destroy previous effect
 			if previous_effect and not p.threads[previous_effect] and p.scopes[previous_effect] then
@@ -61,7 +59,8 @@ local function switch<Key, Result>(condition: () -> Key)
 				graph.update_node(p.active_nodes[previous_effect], false)
 
 				if delay_by then
-					p.threads[previous_effect] = scheduler.delay(delay_by, destroy_delayed, p, previous_effect)
+					p.threads[previous_effect] =
+						scheduler.delay(delay_by, destroy_delayed, p, previous_effect, update_counter)
 				else
 					destroy(p, previous_effect)
 				end
@@ -70,7 +69,7 @@ local function switch<Key, Result>(condition: () -> Key)
 			p.previous_effect = active_effect
 
 			if not active_effect then
-				return p
+				return
 			end
 
 			-- first see if an old node was in the process of getting destroyed.
@@ -80,7 +79,7 @@ local function switch<Key, Result>(condition: () -> Key)
 				scheduler.cancel(thread)
 				p.threads[active_effect] = nil
 				graph.update_node(p.active_nodes[active_effect], true)
-				return p
+				return
 			end
 
 			-- otherwise, create a new node
@@ -96,6 +95,24 @@ local function switch<Key, Result>(condition: () -> Key)
 			active_nodes[active_effect] = active
 			result_values[active_effect], p.delay_by[active_effect] =
 				graph.run_as_unsafe(node, active_effect, read_active)
+		end
+
+		local function update(p: SwitchGraph<Result>)
+			graph.push_dependency(update_counter)
+
+			local previous_effect = p.previous_effect
+			local active_effect = callback()
+
+			if previous_effect ~= active_effect then
+				switch_effect(p, previous_effect, active_effect)
+			end
+
+			-- result values can also change from delayed destruction, which bumps update_counter
+			local values = {}
+			for _, value in p.result_values do
+				table.insert(values, value)
+			end
+			p.values = values
 
 			return p
 		end
@@ -107,16 +124,13 @@ local function switch<Key, Result>(condition: () -> Key)
 			delay_by = {},
 			threads = {},
 			result_values = {},
+			values = {},
 		})
 
 		return function()
 			local result: SwitchGraph<Result> = graph.evaluate_node(reactive)
-
-			local values = {}
-			for _, value in result.result_values do
-				table.insert(values, value)
-			end
-			return values
+			-- a copy, so consumers mutating it don't mutate the actual values
+			return table.clone(result.values)
 		end
 	end
 end
