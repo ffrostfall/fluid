@@ -1,10 +1,10 @@
+local dev = require("../dev")
 local exception = require("../utils/exception")
 local logging = require("../logging")
 local reactive_fn_calls = require("../utils/reactive_fn_calls")
 local scheduler = require("../scheduler")
 local types = require("./types")
 
-local dev_mode = true
 local deferred_thread: thread? = nil
 local pending_eval: { ReactiveNode<unknown> } = {}
 local processing_node: { [thread]: Node<unknown> } = {}
@@ -192,7 +192,7 @@ local function graph_run_as<T..., U...>(node: Node<any>?, fn: (U...) -> T..., ..
 
 	local is_async_node = (node and node.effect and node.evaluation == "async")
 
-	local yielding_errors = dev_mode and not is_async_node
+	local yielding_errors = dev.enabled and not is_async_node
 
 	local ok, a, b
 	if yielding_errors then

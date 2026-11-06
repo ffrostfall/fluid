@@ -13,6 +13,9 @@ function tests.fuzz()
 end
 
 function tests.unit_tests()
+	-- the yield checks are dev mode behavior
+	require("@src/").dev()
+
 	require("@self/unit_tests/logging.spec")
 	call_tests(require("@self/unit_tests/reactive_graph.spec"))
 	require("@self/unit_tests/scheduler.spec")

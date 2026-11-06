@@ -6,6 +6,7 @@ local cleanup = require("@self/reactive/cleanup")
 local create = require("@self/instances/create")
 local deferred = require("@self/reactive/deferred")
 local derive = require("@self/reactive/derive")
+local dev = require("@self/dev")
 local effect = require("@self/reactive/effect")
 local for_keys = require("@self/instances/for_keys")
 local for_values = require("@self/instances/for_values")
@@ -100,6 +101,12 @@ fluid.provide_scheduler = function(): (delta_time: number) -> ()
 	end
 
 	return step
+end
+
+-- toggles dev mode, which adds extra checks (e.g. erroring when a reactive function yields)
+-- at the cost of performance. call this before mounting anything
+fluid.dev = function()
+	dev.enabled = true
 end
 
 fluid.__SCHEDULER_INTERFACE = scheduler
