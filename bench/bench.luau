@@ -1,9 +1,6 @@
---[[
-	reactive graph benchmarks, run with `lute run bench/bench.luau`
-	pass dev (`lute run bench/bench.luau dev`) to benchmark with dev mode enabled
+-- reactive graph benchmark, run with `lute run bench/bench.luau`
+-- pass dev (`lute run bench/bench.luau dev`) to benchmark with dev mode enabled
 
-	times and memory are per iteration, setup before START() isn't measured
-]]
 local BENCH, START = require("@vendor/testkit").benchmark()
 local fluid = require("@src/")
 local process = require("@lute/process")
