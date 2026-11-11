@@ -1,9 +1,7 @@
 local exception = require("./exception")
 local scheduler = require("../scheduler")
 
-local reactive_fn_calls = {}
-
-function reactive_fn_calls.no_yield_call<U..., T...>(
+local function no_yield_call<U..., T...>(
 	func: (T...) -> U...,
 	err_handler: (unknown) -> exception.Identity,
 	yield_handler: (thread) -> exception.Identity,
@@ -15,18 +13,10 @@ function reactive_fn_calls.no_yield_call<U..., T...>(
 	if coroutine.status(co) == "suspended" then
 		local value = yield_handler(co)
 		scheduler.cancel(co)
-		return false, value
+		return false, value :: any
 	end
 
-	return ok, a, b, c, d, e
+	return ok, a, b, c, d, e :: any
 end
 
-function reactive_fn_calls.call<U..., T...>(
-	fn: (T...) -> U...,
-	err_handler: (unknown) -> exception.Identity,
-	...: T...
-): (boolean, U...)
-	return xpcall(fn, err_handler, ...)
-end
-
-return reactive_fn_calls
+return no_yield_call

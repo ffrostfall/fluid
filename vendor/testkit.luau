@@ -66,6 +66,9 @@ local function convert_units(unit: string, value: number): (number, string)
 	}
 
 	local order = 0
+	-- scaled without the sign, a negative value (e.g. memory going down because the gc ran) never gets above 1
+	local sign = if value < 0 then -1 else 1
+	value = math.abs(value)
 
 	while value >= 1000 do
 		order += 1
@@ -85,7 +88,7 @@ local function convert_units(unit: string, value: number): (number, string)
 		value = math.floor(value * 1e2) / 1e2
 	end
 
-	return value, prefix_colors[order](prefixes[order] .. unit)
+	return value * sign, prefix_colors[order](prefixes[order] .. unit)
 end
 
 local WALL = color.white("│")

@@ -4,6 +4,7 @@ local oklab = require("../../utils/oklab")
 local read = require("../../utils/read")
 local types = require("../../reactive/types")
 
+local DEFERRED = graph.evaluation.DEFERRED
 local SLEEP_VELOCITY = 1e-3
 local SLEEP_DISTANCE = 1e-5
 
@@ -177,7 +178,7 @@ function spring_file.create<T>(
 	end
 
 	-- set up the dependency
-	local input_node = graph.create_reactive_node(graph.assert_stable_parent(), on_update, "deferred", read(input))
+	local input_node = graph.create_reactive_node(graph.assert_stable_parent(), on_update, DEFERRED, read(input))
 
 	graph.evaluate_node(input_node)
 

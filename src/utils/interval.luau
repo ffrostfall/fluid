@@ -1,7 +1,8 @@
+local dev = require("../dev")
 local exception = require("./exception")
 local graph = require("../reactive/graph")
 local logging = require("../logging")
-local reactive_fn_calls = require("./reactive_fn_calls")
+local no_yield_call = require("./no_yield_call")
 local scheduler = require("../scheduler")
 
 local function interval_err_handler(err: unknown): exception.Identity
@@ -64,10 +65,23 @@ local function interval_yield_handler(thread: thread): exception.Identity
 	})
 end
 
+local function silent_interval_yield_handler(): exception.Identity
+	return exception.new({
+		kind = "yielded",
+		trace = debug.traceback(logging.errors.interval_user_yielded(), 2),
+	})
+end
+
 local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?): () -> T
 	local scope = graph.assert_stable_parent()
 
-	local ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, 0)
+	local ok, res
+
+	if dev.enabled then
+		ok, res = no_yield_call(func, interval_err_handler, interval_yield_handler, 0)
+	else
+		ok, res = xpcall(func, interval_err_handler, 0)
+	end
 
 	if not ok then
 		logging.error(res.trace)
@@ -76,24 +90,26 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 	local node = graph.create_source_node(res)
 	local last_eval = offset and -offset or 0
 	local last_ok = true
+	local period = hz and 1 / hz
 
 	local function on_render(dt: number)
-		if hz ~= nil then
+		if period then
 			last_eval += dt
-			if last_eval <= 1 / hz then
+			if last_eval <= period then
 				return
 			end
 			dt = last_eval
 			last_eval = 0
 		end
 
+		local ok, res
+
 		if not last_ok then
-			local ok, res = reactive_fn_calls.no_yield_call(func, silent_interval_err_handler, function()
-				return exception.new({
-					kind = "yielded",
-					trace = debug.traceback(logging.errors.interval_user_yielded(), 2),
-				})
-			end, dt)
+			if dev.enabled then
+				ok, res = no_yield_call(func, silent_interval_err_handler, silent_interval_yield_handler, dt)
+			else
+				ok, res = xpcall(func, silent_interval_err_handler, dt)
+			end
 
 			if ok then
 				last_ok = true
@@ -102,7 +118,11 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 			return
 		end
 
-		local ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, dt)
+		if dev.enabled then
+			ok, res = no_yield_call(func, interval_err_handler, interval_yield_handler, dt)
+		else
+			ok, res = xpcall(func, interval_err_handler, dt)
+		end
 
 		if ok then
 			graph.update_node(node, res)

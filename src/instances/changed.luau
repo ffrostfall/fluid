@@ -9,9 +9,7 @@ local function changed(property: string, fn: (any) -> ())
 			fn((instance :: any)[property])
 		end)
 
-		graph.push_cleanup(graph.assert_scope(), function()
-			con:Disconnect()
-		end)
+		graph.push_cleanup(graph.assert_scope(), con)
 	end)
 end
 

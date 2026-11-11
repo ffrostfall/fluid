@@ -7,7 +7,7 @@ type State = "busy" | "ok"
 
 --[[
 async nodes creates a source node for the latest valid value and for the state.
-it also creates a reactive node which spawns a new thread that it runs under it's
+it also creates a reactive node which runs the callback on a thread under it's
 own scope.
 
 when created, the async node gets immediately evaluated similar to an effect.
@@ -15,38 +15,59 @@ unlike an effect though, all evaluations are deferred since we make the assumpti
 that async yields every single time.
 ]]
 
+local ASYNC = graph.evaluation.ASYNC
+local free_runner: thread? = nil
+
+local function runner_loop(run: () -> ())
+	local thread = coroutine.running()
+
+	while true do
+		free_runner = nil
+		run()
+		free_runner = thread
+		run = coroutine.yield()
+	end
+end
+
 local function async<T>(callback: (set: (T) -> ()) -> T): (() -> T, () -> State)
 	local reactive_node: graph.ReactiveNode<any>
 	local value: graph.SourceNode<T> = graph.create_source_node(nil)
 	local state: graph.SourceNode<State> = graph.create_source_node("busy") :: any
+	local running: thread? = nil
 
 	local function set(new: T)
 		graph.update_node(value :: any, new)
 	end
 
-	local function update()
-		assert(reactive_node, "reactive node does not exist")
-		graph.update_node(state, "busy")
+	local function run()
+		running = coroutine.running()
+		local ok, result = graph.run_as(reactive_node, callback, set)
+		running = nil
 
-		-- manually set the node to be busy
-		local thread = task.spawn(function()
-			local ok, call = graph.run_as(reactive_node, callback, set)
+		if ok then
+			set(result)
+		else
+			logging.report_error((result :: any).trace)
+		end
 
-			if ok then
-				set(call)
-			else
-				logging.warn(call.trace)
-			end
-
-			graph.update_node(state, "ok")
-		end)
-
-		graph.push_cleanup(reactive_node, function()
-			scheduler.cancel(thread)
-		end)
+		graph.update_node(state, "ok")
 	end
 
-	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, "async")
+	local function cancel()
+		local thread = running
+		if thread then
+			running = nil
+			scheduler.cancel(thread)
+		end
+	end
+
+	local function update()
+		graph.update_node(state, "busy")
+		graph.push_cleanup(reactive_node, cancel)
+		task.spawn(free_runner or coroutine.create(runner_loop), run)
+	end
+
+	reactive_node = graph.create_reactive_node(graph.assert_stable_parent(), update :: any, ASYNC)
 
 	graph.evaluate_node(reactive_node)
 

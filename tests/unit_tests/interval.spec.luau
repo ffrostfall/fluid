@@ -1,4 +1,5 @@
 local TEST, CASE, CHECK = require("@vendor/testkit").test()
+local dev = require("@src/dev")
 local fluid = require("@src/")
 local hooks = require("@tests/hooks")
 local task = require("@lute/task")
@@ -228,6 +229,21 @@ local function tests()
 
 				CHECK(did_yield_count == 1)
 				hooks.logging.on_warn(nil)
+			end
+
+			do
+				CASE("runs on the caller's thread outside dev mode")
+				local caller = coroutine.running()
+				local thread
+
+				dev.enabled = false
+				fluid.interval(function()
+					thread = coroutine.running()
+					return 0
+				end)
+				dev.enabled = true
+
+				CHECK(thread == caller)
 			end
 		end)
 	)

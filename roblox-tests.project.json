@@ -4,6 +4,7 @@
 	"emitLegacyScripts": false,
 
 	"tree": {
+		"$ignoreUnknownInstances": true,
 		"$className": "DataModel",
 
 		"ReplicatedStorage": {
