@@ -1,7 +1,6 @@
 --!optimize 1
 local task = (task or require("@lute/task")) :: typeof(task)
 
-
 local function format(text: string): string
 	return (string.format("[fluid]: %*", text))
 end

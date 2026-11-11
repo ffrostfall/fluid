@@ -178,8 +178,7 @@ function spring_file.create<T>(
 	end
 
 	-- set up the dependency
-	local input_node =
-		graph.create_reactive_node(graph.assert_stable_parent(), on_update, DEFERRED, read(input))
+	local input_node = graph.create_reactive_node(graph.assert_stable_parent(), on_update, DEFERRED, read(input))
 
 	graph.evaluate_node(input_node)
 
