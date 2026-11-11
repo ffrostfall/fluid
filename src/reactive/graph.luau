@@ -275,7 +275,7 @@ local function push_dependency_to_active_scope<T>(node: SourceNode<T> | Reactive
 	end
 	node.tracked_epoch = scope_epoch
 
-	if dev.enabled and scope == node then
+	if scope == node then
 		error("node tried to add itself as dependency")
 	end
 
