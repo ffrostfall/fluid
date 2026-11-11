@@ -106,12 +106,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 
 		if not last_ok then
 			if dev.enabled then
-				ok, res = no_yield_call(
-					func,
-					silent_interval_err_handler,
-					silent_interval_yield_handler,
-					dt
-				)
+				ok, res = no_yield_call(func, silent_interval_err_handler, silent_interval_yield_handler, dt)
 			else
 				ok, res = xpcall(func, silent_interval_err_handler, dt)
 			end
