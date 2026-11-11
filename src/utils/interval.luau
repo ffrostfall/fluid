@@ -2,7 +2,7 @@ local dev = require("../dev")
 local exception = require("./exception")
 local graph = require("../reactive/graph")
 local logging = require("../logging")
-local reactive_fn_calls = require("./reactive_fn_calls")
+local no_yield_call = require("./no_yield_call")
 local scheduler = require("../scheduler")
 
 local function interval_err_handler(err: unknown): exception.Identity
@@ -78,7 +78,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 	local ok, res
 
 	if dev.enabled then
-		ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, 0)
+		ok, res = no_yield_call(func, interval_err_handler, interval_yield_handler, 0)
 	else
 		ok, res = xpcall(func, interval_err_handler, 0)
 	end
@@ -106,7 +106,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 
 		if not last_ok then
 			if dev.enabled then
-				ok, res = reactive_fn_calls.no_yield_call(
+				ok, res = no_yield_call(
 					func,
 					silent_interval_err_handler,
 					silent_interval_yield_handler,
@@ -124,7 +124,7 @@ local function interval<T>(func: (dt: number) -> T, hz: number?, offset: number?
 		end
 
 		if dev.enabled then
-			ok, res = reactive_fn_calls.no_yield_call(func, interval_err_handler, interval_yield_handler, dt)
+			ok, res = no_yield_call(func, interval_err_handler, interval_yield_handler, dt)
 		else
 			ok, res = xpcall(func, interval_err_handler, dt)
 		end

@@ -2,7 +2,7 @@ local cleanup = require("./cleanup")
 local dev = require("../dev")
 local exception = require("../utils/exception")
 local logging = require("../logging")
-local reactive_fn_calls = require("../utils/reactive_fn_calls")
+local no_yield_call = require("../utils/no_yield_call")
 local scheduler = require("../scheduler")
 local types = require("./types")
 
@@ -373,7 +373,7 @@ local graph = {}
 
 local function graph_run_as<T, U...>(node: Node<any>?, fn: (U...) -> T, ...: U...): (boolean, T)
 	if dev.enabled and not (node and bit32.band(node.flags, ASYNC) ~= 0) then
-		return reactive_fn_calls.no_yield_call(run_on_new_thread, effect_err, effect_yield, node, fn, ...)
+		return no_yield_call(run_on_new_thread, effect_err, effect_yield, node, fn, ...)
 	end
 
 	local co = coroutine.running()
